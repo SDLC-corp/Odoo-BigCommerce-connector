@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_bigcommerce_delivery_orders" model="ir.actions.act_window">
+            <field name="name">Delivery Orders</field>
+            <field name="res_model">stock.picking</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('picking_type_code', '=', 'outgoing'), ('sale_id', '!=', False), ('sale_id.origin', 'ilike', 'BigCommerce #')]</field>
+        </record>
+
+        <record id="action_bigcommerce_tracking" model="ir.actions.act_window">
+            <field name="name">BigCommerce Tracking</field>
+            <field name="res_model">stock.picking</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('picking_type_code', '=', 'outgoing'), ('state', '=', 'done'), ('sale_id', '!=', False), ('sale_id.origin', 'ilike', 'BigCommerce #')]</field>
+        </record>
+
+        <menuitem
+            id="menu_bigcommerce_root"
+            name="BigCommerce"
+            sequence="35"
+            action="bigcommerce_connector.action_bigcommerce_dashboard"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_dashboard"
+            name="Dashboard"
+            parent="menu_bigcommerce_root"
+            sequence="5"
+            action="bigcommerce_connector.action_bigcommerce_dashboard"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_connectors"
+            name="Connectors"
+            parent="menu_bigcommerce_root"
+            sequence="10"
+            action="bigcommerce_connector.action_bigcommerce_connector"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_field_mappings"
+            name="Field Mappings"
+            parent="menu_bigcommerce_root"
+            sequence="15"
+            groups="base.group_user"
+        />
+        <record id="menu_bigcommerce_field_mappings" model="ir.ui.menu">
+            <field name="action" eval="False"/>
+        </record>
+        <menuitem
+            id="menu_bigcommerce_field_mappings_product"
+            name="Product Mapping"
+            parent="menu_bigcommerce_field_mappings"
+            sequence="1"
+            action="bigcommerce_connector.action_bigcommerce_field_mapping_product"
+            groups="base.group_user"
+        />
+        <menuitem
+            id="menu_bigcommerce_field_mappings_customer"
+            name="Customer Mapping"
+            parent="menu_bigcommerce_field_mappings"
+            sequence="2"
+            action="bigcommerce_connector.action_bigcommerce_field_mapping_customer"
+            groups="base.group_user"
+        />
+        <menuitem
+            id="menu_bigcommerce_field_mappings_order"
+            name="Order Mapping"
+            parent="menu_bigcommerce_field_mappings"
+            sequence="3"
+            action="bigcommerce_connector.action_bigcommerce_field_mapping_order"
+            groups="base.group_user"
+        />
+        <menuitem
+            id="menu_bigcommerce_field_mappings_category"
+            name="Category Mapping"
+            parent="menu_bigcommerce_field_mappings"
+            sequence="4"
+            action="bigcommerce_connector.action_bigcommerce_field_mapping_category"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_bindings"
+            name="Bindings"
+            parent="menu_bigcommerce_root"
+            sequence="30"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_webhooks"
+            name="Webhooks"
+            parent="menu_bigcommerce_root"
+            sequence="40"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_inventory"
+            name="Inventory"
+            parent="menu_bigcommerce_root"
+            sequence="45"
+            action="bigcommerce_connector.action_bigcommerce_inventory_binding"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_shipping"
+            name="Shipping"
+            parent="menu_bigcommerce_root"
+            sequence="47"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_logs"
+            name="Logs"
+            parent="menu_bigcommerce_root"
+            sequence="50"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_product_bindings"
+            name="Product Bindings"
+            parent="menu_bigcommerce_bindings"
+            sequence="10"
+            action="bigcommerce_connector.action_bigcommerce_product_binding"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_category_bindings"
+            name="Category Bindings"
+            parent="menu_bigcommerce_bindings"
+            sequence="15"
+            action="bigcommerce_connector.action_bigcommerce_category_binding"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_customer_bindings"
+            name="Customer Bindings"
+            parent="menu_bigcommerce_bindings"
+            sequence="20"
+            action="bigcommerce_connector.action_bigcommerce_customer_binding"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_order_bindings"
+            name="Order Bindings"
+            parent="menu_bigcommerce_bindings"
+            sequence="30"
+            action="bigcommerce_connector.action_bigcommerce_order_binding"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_webhook_events"
+            name="Webhook Events"
+            parent="menu_bigcommerce_webhooks"
+            sequence="10"
+            action="bigcommerce_connector.action_bigcommerce_webhook_event"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_webhook_subscriptions"
+            name="Webhook Subscriptions"
+            parent="menu_bigcommerce_webhooks"
+            sequence="20"
+            action="bigcommerce_connector.action_bigcommerce_webhook_subscription"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_inventory_logs"
+            name="Inventory Logs"
+            parent="menu_bigcommerce_logs"
+            sequence="15"
+            action="bigcommerce_connector.action_bigcommerce_inventory_sync_log"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_delivery_orders"
+            name="Delivery Orders"
+            parent="menu_bigcommerce_shipping"
+            sequence="10"
+            action="bigcommerce_connector.action_bigcommerce_delivery_orders"
+            groups="base.group_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_tracking"
+            name="Tracking"
+            parent="menu_bigcommerce_shipping"
+            sequence="20"
+            action="bigcommerce_connector.action_bigcommerce_tracking"
+            groups="base.group_user"
+        />
+
+        <!-- Shipping menu hidden by default: shipment export still works from connector actions/automation -->
+        <record id="menu_bigcommerce_shipping" model="ir.ui.menu">
+            <field name="active" eval="False"/>
+        </record>
+        <record id="menu_bigcommerce_delivery_orders" model="ir.ui.menu">
+            <field name="active" eval="False"/>
+        </record>
+        <record id="menu_bigcommerce_tracking" model="ir.ui.menu">
+            <field name="active" eval="False"/>
+        </record>
+
+        <menuitem
+            id="menu_bigcommerce_sync_logs"
+            name="Sync Logs"
+            parent="menu_bigcommerce_logs"
+            sequence="10"
+            action="bigcommerce_connector.action_bigcommerce_sync_log"
+            groups="base.group_user"
+        />
+    </data>
+</odoo>

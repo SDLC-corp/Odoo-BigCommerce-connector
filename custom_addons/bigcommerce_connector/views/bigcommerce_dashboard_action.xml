@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_bigcommerce_dashboard" model="ir.actions.client">
+        <field name="name">BigCommerce Dashboard</field>
+        <field name="tag">bigcommerce_dashboard</field>
+    </record>
+</odoo>

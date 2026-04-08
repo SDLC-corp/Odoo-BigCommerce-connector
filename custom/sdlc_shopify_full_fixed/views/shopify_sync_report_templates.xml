@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ===================== TEMPLATE ===================== -->
+    <template id="report_shopify_sync_document">
+        <t t-call="web.external_layout">
+            <t t-set="doc" t-value="doc"/>
+
+            <div class="page">
+                <h2>Shopify Sync Report</h2>
+
+                <p>
+                    <b>Instance:</b>
+                    <span t-esc="doc.instance_id.name"/>
+                </p>
+
+                <p>
+                    <b>Sync Type:</b>
+                    <span t-esc="dict(doc._fields['sync_type'].selection).get(doc.sync_type, doc.sync_type)"/>
+                </p>
+
+                <p>
+                    <b>Start:</b>
+                    <span t-esc="doc.start_time"/>
+                    |
+                    <b>End:</b>
+                    <span t-esc="doc.end_time"/>
+                </p>
+
+                <p>
+                    <b>Total:</b> <span t-esc="doc.total_records"/> |
+                    <b>Success:</b> <span t-esc="doc.success_count"/> |
+                    <b>Errors:</b> <span t-esc="doc.error_count"/>
+                </p>
+
+                <table class="table table-sm mt16">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Shopify ID</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Error Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="doc.line_ids" t-as="line">
+                            <td t-esc="line.record_type"/>
+                            <td t-esc="line.shopify_id"/>
+                            <td t-esc="line.name"/>
+                            <td t-esc="line.status"/>
+                            <td t-esc="line.error_message"/>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </t>
+    </template>
+
+    <!-- ===================== REPORT ACTION ===================== -->
+    <report
+        id="action_report_shopify_sync"
+        model="shopify.sync.report"
+        string="Shopify Sync Report"
+        report_type="qweb-pdf"
+        name="sdlc_shopify_full_fixed.report_shopify_sync_document"
+        file="sdlc_shopify_full_fixed.report_shopify_sync_document"
+        print_report_name="'Shopify Sync - %s' % (object.sync_type)"
+    />
+
+</odoo>

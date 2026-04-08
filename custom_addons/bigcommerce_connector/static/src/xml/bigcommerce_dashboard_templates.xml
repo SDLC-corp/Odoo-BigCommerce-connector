@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="bigcommerce_dashboard_template">
+        <div class="o_bc_dashboard">
+            <button class="bc-chat-fab" type="button" t-on-click="toggleChat">
+                <span class="bc-chat-fab-icon">AI</span>
+                <span class="bc-chat-fab-label"><t t-esc="chatToggleLabel()"/></span>
+            </button>
+
+            <div class="bc-main" t-att-class="state.isChatOpen ? 'with-chat' : ''">
+                <div class="bc-hero">
+                    <div class="bc-hero-left">
+                        <h2>BigCommerce Dashboard</h2>
+                        <div class="bc-subtitle">Sync health, queue status, and recent activity</div>
+                    </div>
+                    <div class="bc-controls">
+                        <div class="bc-control">
+                            <label>Instance</label>
+                            <select t-on-change="onChangeInstance">
+                                <option value="all" t-att-selected="state.instanceId === 'all'">All</option>
+                                <option
+                                    t-foreach="state.instances"
+                                    t-as="inst"
+                                    t-key="inst.id"
+                                    t-att-value="inst.id"
+                                    t-att-selected="('' + state.instanceId) === ('' + inst.id)"
+                                >
+                                    <t t-esc="inst.name"/>
+                                </option>
+                            </select>
+                        </div>
+                        <div class="bc-control">
+                            <label>Range</label>
+                            <select t-on-change="onChangeRange">
+                                <option value="1" t-att-selected="state.rangeDays === '1'">Today</option>
+                                <option value="7" t-att-selected="state.rangeDays === '7'">Last 7 days</option>
+                                <option value="30" t-att-selected="state.rangeDays === '30'">Last 30 days</option>
+                                <option value="90" t-att-selected="state.rangeDays === '90'">Last 90 days</option>
+                            </select>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            t-on-click="onRefreshClick"
+                            t-att-disabled="state.loading"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bc-banner">
+                    <strong>Live status:</strong>
+                    <span>
+                        Success rate <t t-esc="state.data.health.success_rate || 0"/>%,
+                        failed syncs <t t-esc="state.data.totals.failed_sync_count || 0"/>,
+                        pending webhooks <t t-esc="state.data.totals.pending_webhook_queue || 0"/>,
+                        active subscriptions <t t-esc="state.data.totals.webhook_subscriptions_active || 0"/>.
+                    </span>
+                </div>
+
+                <div class="bc-kpis">
+                    <div class="bc-card soft-blue">
+                        <div class="bc-label">Active Instances</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.active_instances || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-green">
+                        <div class="bc-label">Products Synced</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.products_synced || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-violet">
+                        <div class="bc-label">Categories Synced</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.categories_synced || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-teal">
+                        <div class="bc-label">Orders Synced</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.orders_synced || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-amber">
+                        <div class="bc-label">Pending Exports</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.pending_export_queue || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-rose">
+                        <div class="bc-label">Failed Exports</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.failed_export_count || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-blue">
+                        <div class="bc-label">Active Webhooks</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.webhook_subscriptions_active || 0"/></div>
+                    </div>
+                    <div class="bc-card soft-amber">
+                        <div class="bc-label">Webhook Events</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.webhook_events_received || 0"/></div>
+                    </div>
+                </div>
+
+                <div class="bc-grid">
+                    <div class="bc-panel">
+                        <h3>Sync Health</h3>
+                        <div class="bc-health-grid">
+                            <div>Last Product Sync: <strong><t t-esc="state.data.health.last_product_sync || 'Never'"/></strong></div>
+                            <div>Last Inventory Sync: <strong><t t-esc="state.data.health.last_inventory_sync || 'Never'"/></strong></div>
+                            <div>Last Order Sync: <strong><t t-esc="state.data.health.last_order_sync || 'Never'"/></strong></div>
+                            <div>Last Webhook Sync: <strong><t t-esc="state.data.health.last_webhook_sync || 'Never'"/></strong></div>
+                            <div>Last Webhook Event: <strong><t t-esc="state.data.health.last_webhook_event || 'Never'"/></strong></div>
+                            <div>Success Rate: <strong><t t-esc="state.data.health.success_rate || 0"/>%</strong></div>
+                            <div>Instances with Errors: <strong><t t-esc="state.data.health.instances_with_errors || 0"/></strong></div>
+                            <div>Stale Instances: <strong><t t-esc="state.data.health.stale_instances || 0"/></strong></div>
+                        </div>
+                    </div>
+
+                    <div class="bc-panel">
+                        <h3>Queue Snapshot</h3>
+                        <div class="bc-health-grid">
+                            <div>Export Draft: <strong><t t-esc="state.data.queue.export_draft || 0"/></strong></div>
+                            <div>Export Failed: <strong><t t-esc="state.data.queue.export_failed || 0"/></strong></div>
+                            <div>Webhook Pending: <strong><t t-esc="state.data.queue.webhook_pending || 0"/></strong></div>
+                            <div>Webhook Processing: <strong><t t-esc="state.data.queue.webhook_processing || 0"/></strong></div>
+                            <div>Webhook Done: <strong><t t-esc="state.data.queue.webhook_done || 0"/></strong></div>
+                            <div>Webhook Failed: <strong><t t-esc="state.data.queue.webhook_failed || 0"/></strong></div>
+                            <div>Webhook Sub Errors: <strong><t t-esc="state.data.queue.webhook_subscription_error || 0"/></strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bc-grid">
+                    <div class="bc-panel">
+                        <h3>Sync Trend</h3>
+                        <div class="bc-trend-list" t-if="(state.data.trends || []).length">
+                            <div class="bc-trend-row" t-foreach="state.data.trends" t-as="row" t-key="row.date">
+                                <div class="bc-trend-date"><t t-esc="row.date"/></div>
+                                <div class="bc-trend-bars">
+                                    <div class="bc-trend-success" t-att-style="'width:' + trendWidth(row.success, row)">
+                                        <span><t t-esc="row.success"/></span>
+                                    </div>
+                                    <div class="bc-trend-failed" t-att-style="'width:' + trendWidth(row.failed, row)">
+                                        <span><t t-esc="row.failed"/></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bc-empty" t-else="">No trend data yet.</div>
+                    </div>
+
+                    <div class="bc-panel">
+                        <h3>Recent Activity</h3>
+                        <div class="bc-activity-list" t-if="(state.data.recent_activity || []).length">
+                            <div class="bc-activity-row" t-foreach="state.data.recent_activity" t-as="act" t-key="act.time + act.operation + act.instance">
+                                <div class="bc-activity-main">
+                                    <strong><t t-esc="act.operation"/></strong>
+                                    <span> - <t t-esc="act.instance"/></span>
+                                </div>
+                                <div class="bc-activity-sub">
+                                    <span t-att-class="badgeClass(act.status)"><t t-esc="act.status"/></span>
+                                    <span><t t-esc="act.time"/></span>
+                                </div>
+                                <div class="bc-activity-msg"><t t-esc="act.message"/></div>
+                            </div>
+                        </div>
+                        <div class="bc-empty" t-else="">No activity logs found.</div>
+                    </div>
+                </div>
+
+                <div class="bc-panel">
+                    <h3>Instance Overview</h3>
+                    <div class="bc-empty" t-if="!(state.data.instances || []).length">No instances found.</div>
+                    <table t-else="" class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Instance</th>
+                                <th>Company</th>
+                                <th>Health</th>
+                                <th>Last Sync</th>
+                                <th>Pending</th>
+                                <th>Failed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.data.instances" t-as="row" t-key="row.id">
+                                <td><t t-esc="row.name"/></td>
+                                <td><t t-esc="row.company"/></td>
+                                <td><span t-att-class="badgeClass(row.health)"><t t-esc="row.health"/></span></td>
+                                <td><t t-esc="row.last_sync"/></td>
+                                <td><t t-esc="row.pending"/></td>
+                                <td><t t-esc="row.failed"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bc-loading" t-if="state.loading">Loading dashboard...</div>
+            </div>
+
+            <aside t-att-class="'bc-chat-panel ' + (state.isChatOpen ? 'open' : 'closed')">
+                <div class="bc-chat-header">
+                    <div>
+                        <h4>AI Assistant</h4>
+                        <small t-if="state.chatEnabled">Powered by Gemini</small>
+                        <small t-else="">Disabled for selected instance</small>
+                    </div>
+                    <button class="btn btn-link btn-sm" type="button" t-on-click="toggleChat">Close</button>
+                </div>
+
+                <div class="bc-chat-chips" t-if="state.quickActions.length">
+                    <button
+                        type="button"
+                        class="bc-chip"
+                        t-foreach="state.quickActions"
+                        t-as="action"
+                        t-key="action.key"
+                        t-att-data-prompt="action.prompt"
+                        t-on-click="onQuickActionClick"
+                        t-att-disabled="state.sending"
+                    >
+                        <t t-esc="action.label"/>
+                    </button>
+                </div>
+
+                <div class="bc-chat-messages">
+                    <div class="bc-chat-empty" t-if="!(state.messages || []).length">
+                        Ask about orders, stock, sync health, or click a quick action.
+                    </div>
+                    <div
+                        t-foreach="state.messages"
+                        t-as="msg"
+                        t-key="msg.ts + msg.role + msg.content"
+                        t-att-class="'bc-chat-msg ' + (msg.role === 'user' ? 'user' : 'assistant') + (msg.isError ? ' is-error' : '')"
+                    >
+                        <div class="bc-chat-msg-role">
+                            <t t-if="msg.role === 'user'">You</t>
+                            <t t-else="">Assistant</t>
+                        </div>
+                        <div class="bc-chat-msg-content"><t t-esc="msg.content"/></div>
+                    </div>
+                    <div class="bc-chat-sending" t-if="state.sending">Assistant is thinking...</div>
+                </div>
+
+                <div class="bc-chat-input-wrap">
+                    <textarea
+                        class="bc-chat-input"
+                        placeholder="Type your question..."
+                        t-att-value="state.chatInput"
+                        t-on-input="onChatInput"
+                        t-att-disabled="state.sending"
+                    />
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        t-on-click="sendMessage"
+                        t-att-disabled="state.sending"
+                    >
+                        Send
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </t>
+</templates>

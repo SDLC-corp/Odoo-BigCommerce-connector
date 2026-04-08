@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =============================
+         ✅ GIFT CARD LIST VIEW
+    ============================== -->
+    <record id="view_shopify_gift_card_list" model="ir.ui.view">
+        <field name="name">shopify.gift.card.list</field>
+        <field name="model">shopify.gift.card</field>
+        <field name="arch" type="xml">
+            <list string="Shopify Gift Cards">
+                <field name="code"/>
+                <field name="value"/>
+                <field name="balance"/>
+                <field name="active"/>
+                <field name="instance_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =============================
+         ✅ GIFT CARD FORM VIEW
+    ============================== -->
+    <record id="view_shopify_gift_card_form" model="ir.ui.view">
+        <field name="name">shopify.gift.card.form</field>
+        <field name="model">shopify.gift.card</field>
+        <field name="arch" type="xml">
+            <form string="Shopify Gift Card">
+                <header>
+
+                    <button name="action_update_on_shopify"
+                            type="object"
+                            string="Update in Shopify"
+                            class="btn-secondary"/>
+
+                </header>
+
+                <sheet>
+                    <group>
+                        <field name="code" readonly="1"/>
+                        <field name="shopify_gift_card_id" readonly="1"/>
+                        <field name="instance_id"/>
+                    </group>
+
+                    <group>
+                        <field name="value"/>
+                        <field name="balance"/>
+                        <field name="active"/>
+                        <field name="expiry_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- =============================
+         ✅ ACTION
+    ============================== -->
+    <record id="action_shopify_gift_card" model="ir.actions.act_window">
+        <field name="name">Gift Cards</field>
+        <field name="res_model">shopify.gift.card</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>
+

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Shopify Tracking List View -->
+    <record id="view_stock_picking_shopify_tracking_list" model="ir.ui.view">
+        <field name="name">stock.picking.list.shopify.tracking</field>
+        <field name="model">stock.picking</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="shopify_instance_id" />
+                <field name="scheduled_date" />
+                <field name="date_done" />
+                <field name="partner_id" />
+                <field name="shopify_customer_email" />
+                <field name="shopify_customer_phone" />
+                <field name="shopify_payment_status" />
+                <field name="shopify_tracking_status" />
+                <field name="shopify_tracking_last_update" />
+                <field name="shopify_delivered_at" />
+                <field name="shopify_delivered" />
+            </list>
+        </field>
+    </record>
+
+    <!-- Delivery Orders Action -->
+    <record id="action_shopify_shipping_delivery_orders" model="ir.actions.act_window">
+        <field name="name">Delivery Orders</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">
+            [('picking_type_id.code', '=', 'outgoing'), ('state', '!=', 'cancel')]
+        </field>
+    </record>
+
+    <!-- Shopify Tracking Action -->
+    <record id="action_shopify_shipping_tracking" model="ir.actions.act_window">
+        <field name="name">Shopify Tracking</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_stock_picking_shopify_tracking_list" />
+        <field name="domain">
+            [('picking_type_id.code', '=', 'outgoing'),
+            ('shopify_fulfillment_id', '!=', False)]
+        </field>
+    </record>
+
+    <!-- Shopify Shipping Menus -->
+    <menuitem id="menu_shopify_shipping_root"
+        name="Shipping"
+        parent="menu_shopify_root"
+        sequence="880"
+        groups="base.group_user" />
+
+    <menuitem id="menu_shopify_shipping_delivery_orders"
+        name="Delivery Orders"
+        parent="menu_shopify_shipping_root"
+        action="action_shopify_shipping_delivery_orders"
+        sequence="30"
+        groups="base.group_user" />
+
+    <menuitem id="menu_shopify_shipping_tracking"
+        name="Shopify Tracking"
+        parent="menu_shopify_shipping_root"
+        action="action_shopify_shipping_tracking"
+        sequence="40"
+        groups="base.group_user" />
+
+</odoo>

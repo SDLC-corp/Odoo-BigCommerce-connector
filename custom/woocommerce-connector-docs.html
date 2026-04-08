@@ -1,0 +1,470 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WooCommerce Connector for Odoo 18 - Documentation</title>
+<style>
+  :root {
+    --ink: #1c1c1c;
+    --muted: #5d5d5d;
+    --accent: #2d6cdf;
+    --accent-2: #f39b2f;
+    --accent-3: #2aa87b;
+    --paper: #f7f2e9;
+    --card: #ffffff;
+    --line: #e3d9c9;
+    --shadow: 0 12px 35px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: radial-gradient(1200px 600px at 10% -10%, #ffe9c7 0%, transparent 60%),
+                radial-gradient(900px 600px at 110% 10%, #cfe8ff 0%, transparent 60%),
+                linear-gradient(180deg, #f7f2e9 0%, #fffaf3 35%, #f6f1e7 100%);
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 22px 80px;
+  }
+  header.hero {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+    align-items: center;
+    padding: 28px;
+    border: 2px solid var(--line);
+    background: var(--card);
+    box-shadow: var(--shadow);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 200px;
+    height: 200px;
+    background: conic-gradient(from 180deg, #2d6cdf, #f39b2f, #2aa87b, #2d6cdf);
+    border-radius: 50%;
+    opacity: 0.12;
+  }
+  .hero h1 {
+    font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+    font-size: 36px;
+    margin: 0 0 12px;
+    letter-spacing: 0.2px;
+  }
+  .hero p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .chip {
+    font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff8ee;
+  }
+  nav.quick {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 24px 0 10px;
+  }
+  nav.quick a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+  }
+  nav.quick a:hover { border-bottom-color: var(--accent); }
+  section {
+    margin-top: 30px;
+    padding: 22px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+    animation: rise 0.7s ease both;
+  }
+  section h2 {
+    margin: 0 0 12px;
+    font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .card {
+    padding: 16px;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    background: #fffdf8;
+  }
+  ul { margin: 10px 0 0 18px; }
+  li { margin: 6px 0; }
+  .note {
+    padding: 12px 14px;
+    border-left: 4px solid var(--accent-2);
+    background: #fff3df;
+    border-radius: 8px;
+    margin-top: 12px;
+  }
+  .shots {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .shot {
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+  .shot figcaption {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tagline {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .steps ol { margin: 0 0 0 18px; }
+  .steps li { margin: 8px 0; }
+  code, pre {
+    font-family: "Courier New", monospace;
+    background: #f3efe8;
+    border-radius: 6px;
+  }
+  code { padding: 2px 6px; }
+  pre { padding: 12px; overflow-x: auto; }
+  footer {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (max-width: 900px) {
+    header.hero { grid-template-columns: 1fr; }
+    .grid-2, .grid-3, .shots { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <h1>WooCommerce Connector for Odoo 18</h1>
+        <p>
+          This document describes the WooCommerce connector module found in
+          <code>custom_addons/woo_connector</code>. It covers configuration,
+          sync flows, webhooks, and the analytics dashboard.
+        </p>
+        <div class="chips">
+          <span class="chip">Products</span>
+          <span class="chip">Orders</span>
+          <span class="chip">Customers</span>
+          <span class="chip">Categories</span>
+          <span class="chip">Coupons</span>
+          <span class="chip">Inventory</span>
+          <span class="chip">Reports</span>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <strong>Module summary</strong>
+          <ul>
+            <li>Version: 1.0.0</li>
+            <li>App: Odoo WooCommerce Connector</li>
+            <li>Depends on: base, web, bus, product, sale_management, contacts, stock, stock_delivery</li>
+            <li>Main menu: WooCommerce</li>
+          </ul>
+          <div class="note">Designed for Odoo 18 with Woo REST API (wc/v3).</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="quick">
+      <a href="#features">Features</a>
+      <a href="#setup">Setup</a>
+      <a href="#screens">Screens</a>
+      <a href="#sync">Sync Flow</a>
+      <a href="#mapping">Field Mapping</a>
+      <a href="#webhooks">Webhooks</a>
+      <a href="#reports">Reports</a>
+      <a href="#menus">Menu Map</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+    </nav>
+
+    <section id="features">
+      <h2>Key Features</h2>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Multi-instance control</strong>
+          <ul>
+            <li>Configure multiple WooCommerce stores.</li>
+            <li>Track totals: products, orders, customers, revenue.</li>
+            <li>Quick actions for sync and analytics from the instance card.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>One-click sync</strong>
+          <ul>
+            <li>Sync Products, Orders, Categories, Coupons, and Inventory.</li>
+            <li>Customers are created automatically from order billing data.</li>
+            <li>Order lines are synced with SKU matching to Odoo products.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Analytics dashboard</strong>
+          <ul>
+            <li>KPI grid (instances, customers, products, orders, revenue).</li>
+            <li>Order mix bars and revenue ring visualization.</li>
+            <li>Filter by instance and date range; Sync Now action.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Reporting and audit</strong>
+          <ul>
+            <li>Sync reports show status, run time, and messages.</li>
+            <li>Report lines log per-record success or error details.</li>
+            <li>Mode: manual, cron, or webhook.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="setup" class="steps">
+      <h2>Setup and Configuration</h2>
+      <ol>
+        <li>Install the module from Apps: <strong>Odoo WooCommerce Connector</strong>.</li>
+        <li>Go to <strong>WooCommerce &gt; Instances</strong> and create a new instance.</li>
+        <li>Fill in: Shop URL, Consumer Key, Consumer Secret, WP Username, and Application Password.</li>
+        <li>Click <strong>Test Connection</strong> to validate credentials.</li>
+        <li>Optional: add a Webhook Secret for signed webhooks.</li>
+        <li>Configure auto sync intervals in the <strong>Auto Sync (Cron)</strong> tab.</li>
+      </ol>
+      <div class="note">
+        Test Connection uses the WP Application Password with the Woo system status endpoint.
+      </div>
+    </section>
+
+    <section id="screens">
+      <h2>WooCommerce Screens</h2>
+      <p class="tagline">Woo-styled placeholders for the main WooCommerce connector screens.</p>
+      <div class="shots">
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-dashboard.svg" alt="WooCommerce dashboard" width="100%" />
+          <figcaption>1) Dashboard overview with KPIs and analytics.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-instance.svg" alt="WooCommerce instance" width="100%" />
+          <figcaption>2) Instance configuration with connection test and sync buttons.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-products.svg" alt="WooCommerce product listing" width="100%" />
+          <figcaption>3) Product listing synced from WooCommerce.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-orders.svg" alt="WooCommerce order listing" width="100%" />
+          <figcaption>4) Order listing with totals and create sale order action.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-reports.svg" alt="WooCommerce reports" width="100%" />
+          <figcaption>5) Reports list with sync status and run details.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-inventory.svg" alt="WooCommerce inventory" width="100%" />
+          <figcaption>6) Inventory view with stock quantity and status.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="../custom_addons/woo_connector/static/description/woo-shipping.svg" alt="WooCommerce shipping and tracking" width="100%" />
+          <figcaption>7) Shipping and Woo tracking list view.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="sync">
+      <h2>Sync Flow Overview</h2>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Products</strong>
+          <ul>
+            <li>Fetches products from WooCommerce (wc/v3).</li>
+            <li>Matches on SKU (or slug fallback) to Odoo products.</li>
+            <li>Creates missing products and updates price, stock, tags, and categories.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Orders</strong>
+          <ul>
+            <li>Pulls orders and stores Woo status, totals, and payment data.</li>
+            <li>Creates order lines and links to Odoo products by SKU.</li>
+            <li>Can create a Sale Order from a Woo order.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Customers</strong>
+          <ul>
+            <li>Created automatically from order billing data.</li>
+            <li>Guest orders get a stable guest ID using email.</li>
+            <li>Customer record can be pushed to WooCommerce.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Categories, Coupons, Inventory</strong>
+          <ul>
+            <li>Categories pull from Woo and can be pushed back.</li>
+            <li>Coupons sync fields like type, amount, usage, and status.</li>
+            <li>Inventory sync uses Woo stock quantity and status.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapping">
+      <h2>Field Mapping</h2>
+      <p>
+        Field Mapping allows mapping Woo payload fields to Odoo fields. Nested
+        keys are supported (for example <code>billing.email</code>).
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Supported models</strong>
+          <ul>
+            <li>Products</li>
+            <li>Customers</li>
+            <li>Categories</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>How it works</strong>
+          <ul>
+            <li>Mappings are applied during sync.</li>
+            <li>Price mapping uses safe fallback to sale or regular price.</li>
+            <li>Per-product mapping can override global mapping.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="webhooks">
+      <h2>Webhooks</h2>
+      <p>
+        The connector accepts WooCommerce webhooks and can verify signatures.
+        Webhooks can target a specific instance with <code>instance_id</code>
+        or auto-detect by source URL.
+      </p>
+      <pre>Webhook URL: https://your-odoo-domain.com/woo/webhook
+Order Status URL: https://your-odoo-domain.com/woo/webhook/order</pre>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Topics to enable</strong>
+          <ul>
+            <li>product.created / product.updated</li>
+            <li>customer.created / customer.updated</li>
+            <li>order.created / order.updated</li>
+            <li>coupon.created / coupon.updated</li>
+            <li>category.created / category.updated</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Signature verification</strong>
+          <ul>
+            <li>Set a Webhook Secret in the instance.</li>
+            <li>Incoming signature is validated via HMAC SHA256.</li>
+            <li>Invalid or missing signatures are logged.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="reports">
+      <h2>Reports and Audit Trail</h2>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Sync Report</strong>
+          <ul>
+            <li>Operation name, mode, and status.</li>
+            <li>Run time and summary message.</li>
+            <li>Shows if webhook activity was involved.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Report Lines</strong>
+          <ul>
+            <li>Per-record success or error entries.</li>
+            <li>Source action tags (manual, cron, webhook).</li>
+            <li>Error details for troubleshooting.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="menus">
+      <h2>Menu Map</h2>
+      <div class="grid-2">
+        <div class="card">
+          <strong>WooCommerce</strong>
+          <ul>
+            <li>Dashboard</li>
+            <li>Instances</li>
+            <li>Data: Products, Customers, Orders, Categories, Coupons</li>
+            <li>Inventory</li>
+            <li>Delivery Orders, Tracking</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Field Mapping and Reports</strong>
+          <ul>
+            <li>Product, Customer, Category Mapping</li>
+            <li>Sync Reports, Sales Report, Webhook Reports</li>
+            <li>Cancelled Orders, Mapping Reports</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>401 Unauthorized:</strong> check Woo API key permissions (read access) and correct URL.</li>
+        <li><strong>SSL on localhost:</strong> the connector allows verify=false for local testing.</li>
+        <li><strong>Missing order lines:</strong> ensure SKU matches an Odoo product.</li>
+        <li><strong>Webhook ignored:</strong> verify topic, instance detection, and webhook secret.</li>
+        <li><strong>Duplicate products:</strong> make sure SKU is unique in Woo and Odoo.</li>
+      </ul>
+    </section>
+
+    <footer>
+      Generated placeholder documentation for WooCommerce Connector (Odoo 18).
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+    <!-- ================= ROOT MENU ================= -->
+    <menuitem
+        id="menu_shopify_root"
+        name="Shopify"
+        sequence="1"
+        groups="base.group_user"
+        web_icon="sdlc_shopify_full_fixed,static/description/icon.png"
+    />
+
+    <!-- ================= DASHBOARD ================= -->
+    <menuitem
+        id="menu_shopify_dashboard"
+        name="Dashboard"
+        parent="menu_shopify_root"
+        action="action_shopify_dashboard"
+        sequence="1"
+        groups="base.group_user"
+    />
+
+
+    <menuitem
+        id="menu_shopify_instance"
+        name="Instances"
+        action="action_shopify_instance"
+        sequence="2"
+        groups="base.group_user"
+    />
+
+    <!-- ================= SHOPIFY DATA ================= -->
+    <menuitem
+        id="menu_shopify_data"
+        name="Shopify Data"
+        parent="menu_shopify_root"
+        sequence="30"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_products"
+        name="Products"
+        parent="menu_shopify_data"
+        action="action_shopify_products"
+        sequence="10"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_customers"
+        name="Customers"
+        parent="menu_shopify_data"
+        action="action_shopify_customers"
+        sequence="20"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_orders"
+        name="Orders"
+        parent="menu_shopify_data"
+        action="action_shopify_orders"
+        sequence="30"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_categories"
+        name="Categories"
+        parent="menu_shopify_data"
+        action="action_shopify_categories"
+        sequence="40"
+        groups="base.group_user"
+    />
+
+    <!-- ================= MAPPING (NEW NAV BAR SECTION) ================= -->
+    <menuitem
+        id="menu_shopify_mapping_root"
+        name="Mapping"
+        parent="menu_shopify_root"
+        sequence="50"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_mapping_product"
+        name="Product Mapping"
+        parent="menu_shopify_mapping_root"
+        action="action_shopify_field_mapping_product"
+        sequence="10"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_mapping_customer"
+        name="Customer Mapping"
+        parent="menu_shopify_mapping_root"
+        action="action_shopify_field_mapping_customer"
+        sequence="20"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_mapping_order"
+        name="Order Mapping"
+        parent="menu_shopify_mapping_root"
+        action="action_shopify_field_mapping_order"
+        sequence="30"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_mapping_category"
+        name="Category Mapping"
+        parent="menu_shopify_mapping_root"
+        action="action_shopify_field_mapping_category"
+        sequence="40"
+        groups="base.group_user"
+    />
+
+    <!-- ================= GIFT CARDS ================= -->
+    <menuitem
+        id="menu_shopify_gift_card"
+        name="Gift Cards"
+        parent="menu_shopify_root"
+        action="action_shopify_gift_card"
+        sequence="40"
+        groups="base.group_user"
+    />
+
+    <!-- ================= REPORTS ================= -->
+    <menuitem
+        id="menu_shopify_report_data"
+        name="Reports"
+        parent="menu_shopify_root"
+        sequence="60"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_shopify_sync_report"
+        name="Sync Reports"
+        parent="menu_shopify_report_data"
+        action="action_shopify_sync_report"
+        sequence="1"
+        groups="base.group_user"
+    />
+
+</odoo>

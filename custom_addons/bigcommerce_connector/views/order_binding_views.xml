@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_order_binding_list" model="ir.ui.view">
+            <field name="name">bigcommerce.order.binding.list</field>
+            <field name="model">bigcommerce.order.binding</field>
+            <field name="arch" type="xml">
+                <list string="Order Bindings">
+                    <field name="instance_id"/>
+                    <field name="bigcommerce_order_number"/>
+                    <field name="bigcommerce_order_id"/>
+                    <field name="sale_order_id"/>
+                    <field name="customer_name"/>
+                    <field name="customer_email" optional="hide"/>
+                    <field name="currency_id" optional="hide"/>
+                    <field name="sale_order_amount_total" string="Total"/>
+                    <field name="status_on_bigcommerce"/>
+                    <field name="sale_order_state" string="Odoo Status"/>
+                    <field name="sync_state"/>
+                    <field name="sale_order_date" string="Order Date"/>
+                    <field name="imported_at"/>
+                    <field name="exported_at" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_order_binding_form" model="ir.ui.view">
+            <field name="name">bigcommerce.order.binding.form</field>
+            <field name="model">bigcommerce.order.binding</field>
+            <field name="arch" type="xml">
+                <form string="Order Binding">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="sale_order_id"/>
+                                <field name="sync_state"/>
+                                <field name="status_on_bigcommerce"/>
+                            </group>
+                            <group>
+                                <field name="bigcommerce_order_id"/>
+                                <field name="bigcommerce_order_number"/>
+                                <field name="imported_at" readonly="1"/>
+                                <field name="exported_at" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Error">
+                            <field name="last_error" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_order_binding_search" model="ir.ui.view">
+            <field name="name">bigcommerce.order.binding.search</field>
+            <field name="model">bigcommerce.order.binding</field>
+            <field name="arch" type="xml">
+                <search string="Order Bindings">
+                    <field name="instance_id"/>
+                    <field name="sync_state"/>
+                    <field name="sale_order_id"/>
+                    <field name="bigcommerce_order_id"/>
+                    <field name="bigcommerce_order_number"/>
+                    <field name="customer_name"/>
+                    <field name="customer_email"/>
+                    <field name="status_on_bigcommerce"/>
+                    <field name="sale_order_state"/>
+                    <filter name="filter_state_draft" string="Draft" domain="[('sync_state', '=', 'draft')]"/>
+                    <filter name="filter_state_synced" string="Synced" domain="[('sync_state', '=', 'synced')]"/>
+                    <filter name="filter_state_error" string="Error" domain="[('sync_state', '=', 'error')]"/>
+                    <filter name="filter_missing_sale_order" string="Missing Sale Order" domain="[('sale_order_id', '=', False)]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_by_state" string="Sync State" context="{'group_by': 'sync_state'}"/>
+                        <filter name="group_by_status" string="BC Status" context="{'group_by': 'status_on_bigcommerce'}"/>
+                        <filter name="group_by_sale_state" string="Odoo Status" context="{'group_by': 'sale_order_state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_order_binding" model="ir.actions.act_window">
+            <field name="name">Order Bindings</field>
+            <field name="res_model">bigcommerce.order.binding</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_order_binding_search"/>
+        </record>
+    </data>
+</odoo>

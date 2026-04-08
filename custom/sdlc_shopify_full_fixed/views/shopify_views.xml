@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- PRODUCT TEMPLATE SHOPIFY BUTTONS -->
+    <record id="view_product_form_shopify_inherit" model="ir.ui.view">
+        <field name="name">product.template.form.shopify.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view" />
+        <field name="arch" type="xml">
+
+            <!-- HEADER Buttons (v19 product form has no header by default) -->
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <!-- CREATE BUTTON -->
+                    <button name="action_create_in_shopify"
+                        type="object"
+                        string="Create in Shopify"
+                        class="btn-primary"
+                        modifiers="{'invisible': [['shopify_product_id','!=', False]]}" />
+
+                    <button name="action_update_in_shopify"
+                        type="object"
+                        string="Update in Shopify"
+                        class="btn-secondary"
+                        modifiers="{'invisible': [['shopify_product_id','=', False]]}" />
+                </header>
+            </xpath>
+
+            <!-- Shopify Product ID field -->
+            <xpath expr="//sheet/notebook" position="before">
+                <group string="Shopify Details">
+                    <field name="shopify_instance_id" />
+                    <field name="shopify_product_id" readonly="1" />
+                    <field name="shopify_push_qty" modifiers="{'required': true}" />
+                    <field name="shopify_available_qty" readonly="1" modifiers="{'invisible': [('shopify_product_id','=', False)]}" />
+                </group>
+            </xpath>
+
+            <!-- Ensure Image shows -->
+            <xpath expr="//field[@name='image_1920']" position="attributes">
+                <attribute name="widget">image</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- PRODUCT TEMPLATE TREE: SHOW INSTANCE -->
+    <record id="view_product_tree_shopify_instance" model="ir.ui.view">
+        <field name="name">product.template.tree.shopify.instance</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='name']" position="before">
+                <field name="shopify_instance_id" />
+                <field name="shopify_available_qty" optional="show"/>
+            </xpath>
+            <xpath expr="//list/field[@name='product_tag_ids']" position="attributes">
+                <attribute name="optional">hide</attribute>
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='qty_available']" position="attributes">
+                <attribute name="optional">hide</attribute>
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='virtual_available']" position="attributes">
+                <attribute name="optional">hide</attribute>
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

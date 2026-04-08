@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =========================== SEARCH VIEW ============================= -->
+    <record id="view_shopify_field_mapping_search" model="ir.ui.view">
+        <field name="name">shopify.field.mapping.search</field>
+        <field name="model">shopify.field.mapping</field>
+        <field name="arch" type="xml">
+            <search string="Shopify Field Mapping">
+                <field name="mapping_type"/>
+                <field name="instance_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" help="Show active mappings"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- =========================== TEST ALL SERVER ACTION ================== -->
+    <record id="action_shopify_field_mapping_test_all" model="ir.actions.server">
+        <field name="name">Test Mapping </field>
+        <field name="model_id" ref="model_shopify_field_mapping"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = env['shopify.field.mapping'].with_context(active_domain=env.context.get('domain') or env.context.get('active_domain')).action_test_mapping()
+        </field>
+    </record>
+
+    <!-- =========================== ACTION WINDOW =========================== -->
+    <record id="action_shopify_field_mapping" model="ir.actions.act_window">
+        <field name="name">Shopify Field Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_shopify_field_mapping_search"/>
+    </record>
+
+    <!-- =========================== LIST VIEW =============================== -->
+    <record id="view_shopify_field_mapping_list" model="ir.ui.view">
+        <field name="name">shopify.field.mapping.list</field>
+        <field name="model">shopify.field.mapping</field>
+        <field name="arch" type="xml">
+
+            <list string="Shopify Field Mapping" editable="bottom">
+                <header>
+                    <button name="%(action_shopify_field_mapping_test_all)d"
+                            type="action"
+                            string="Test"
+                            class="btn-secondary me-2"
+                            display="always"/>
+                    <button name="action_sync_shopify_fields"
+                            type="object"
+                            string="Load New Fields"
+                            class="btn-success"
+                            display="always"/>
+                </header>
+
+                <field name="mapping_type" readonly="1"/>
+                <field name="instance_id"/>
+
+                <!-- IMPORTANT: FIELD DOMAIN FIX -->
+                <field name="odoo_field"
+                       domain="[('model_id', '=', odoo_model_id)]"
+                       />
+
+                <field name="shopify_field_id"
+                       domain="[('instance_id','=',instance_id),
+                               ('mapping_type','=',mapping_type)]"
+                       />
+
+                <field name="active"/>
+            </list>
+
+        </field>
+    </record>
+
+    <!-- =========================== FORM VIEW =============================== -->
+    <record id="view_shopify_field_mapping_form" model="ir.ui.view">
+        <field name="name">shopify.field.mapping.form</field>
+        <field name="model">shopify.field.mapping</field>
+        <field name="arch" type="xml">
+
+            <form string="Shopify Field Mapping">
+
+                <header>
+                    <button name="action_test_mapping"
+                            type="object"
+                            string="Test Mapping"
+                            class="btn-primary"/>
+                </header>
+
+                <sheet>
+                    <group>
+                        <field name="mapping_type" readonly="1"/>
+
+                        <field name="instance_id"/>
+
+                        <!-- CORRECT FIELD DOMAIN -->
+                        <field name="odoo_field"
+                               required="1"
+                               domain="[('model_id', '=', odoo_model_id)]"
+                               options="{'no_create': True}"
+                               />
+
+                        <field name="shopify_field_id"
+                               required="1"
+                               domain="[('instance_id','=',instance_id),
+                                       ('mapping_type','=',mapping_type)]"
+                               />
+
+                        <field name="active"/>
+                    </group>
+
+                    <footer>
+                        <button special="cancel"
+                                string="Close"
+                                class="btn-secondary"/>
+                    </footer>
+                </sheet>
+
+                <footer>
+                    <button name="action_sync_shopify_fields"
+                            type="object"
+                            string="Load Shopify Fields"
+                            class="btn-success me-2"
+                            icon="fa-cloud-download"/>
+                    <button name="action_test_mapping"
+                            type="object"
+                            string="Test Mapping"
+                            class="btn-primary"
+                            icon="fa-check-circle"/>
+                    <button special="cancel"
+                            string="Close"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+
+        </field>
+    </record>
+
+</odoo>

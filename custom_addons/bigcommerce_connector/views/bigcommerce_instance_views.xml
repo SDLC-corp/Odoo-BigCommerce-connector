@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_instance_tree" model="ir.ui.view">
+            <field name="name">bigcommerce.instance.tree</field>
+            <field name="model">bigcommerce.instance</field>
+            <field name="arch" type="xml">
+                <list string="BigCommerce Instances" default_order="name">
+                    <field name="name"/>
+                    <field name="company_id"/>
+                    <field name="store_hash"/>
+                    <field name="inventory_master"/>
+                    <field name="state"/>
+                    <field name="last_order_sync_at"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_instance_form" model="ir.ui.view">
+            <field name="name">bigcommerce.instance.form</field>
+            <field name="model">bigcommerce.instance</field>
+            <field name="arch" type="xml">
+                <form string="BigCommerce Instance">
+                    <header>
+                        <button
+                            name="action_test_connection"
+                            string="Test Connection"
+                            type="object"
+                            class="oe_highlight"
+                        />
+                        <button
+                            name="action_sync_products"
+                            string="Sync Products"
+                            type="object"
+                        />
+                        <button
+                            name="action_sync_customers"
+                            string="Sync Customers"
+                            type="object"
+                        />
+                        <button
+                            name="action_sync_orders"
+                            string="Sync Orders"
+                            type="object"
+                        />
+                        <button
+                            name="action_export_inventory"
+                            string="Export Inventory"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_register_webhooks"
+                            string="Register Webhooks"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <field name="state" widget="statusbar" statusbar_visible="draft,connected,error"/>
+                    </header>
+                    <sheet>
+                        <notebook>
+                            <page string="General">
+                                <group>
+                                    <group>
+                                        <field name="name" placeholder="BigCommerce Store - US"/>
+                                        <field name="active"/>
+                                        <field name="company_id"/>
+                                    </group>
+                                    <group>
+                                        <field name="debug_mode"/>
+                                        <field name="state" readonly="1"/>
+                                        <field name="is_ready_for_connection" readonly="1"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="note" placeholder="Internal notes for this BigCommerce instance..."/>
+                                </group>
+                            </page>
+                            <page string="API Credentials">
+                                <group>
+                                    <group>
+                                        <field
+                                            name="store_hash"
+                                            placeholder="abc123xyz"
+                                        />
+                                        <field
+                                            name="api_base_url"
+                                            placeholder="https://api.bigcommerce.com/stores"
+                                        />
+                                        <field name="client_id" placeholder="Optional client id"/>
+                                    </group>
+                                    <group>
+                                        <field
+                                            name="access_token"
+                                            password="True"
+                                            placeholder="Required for real API calls"
+                                        />
+                                        <field
+                                            name="client_secret"
+                                            password="True"
+                                            placeholder="Optional client secret"
+                                        />
+                                        <field
+                                            name="webhook_secret"
+                                            password="True"
+                                            placeholder="Optional webhook secret"
+                                        />
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Business Settings">
+                                <group>
+                                    <group>
+                                        <field name="warehouse_id"/>
+                                        <field name="pricelist_id"/>
+                                    </group>
+                                    <group>
+                                        <field name="inventory_master"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Sync Info">
+                                <group>
+                                    <field name="last_product_sync_at" readonly="1"/>
+                                    <field name="last_customer_sync_at" readonly="1"/>
+                                    <field name="last_order_sync_at" readonly="1"/>
+                                    <field name="last_tested_at" readonly="1"/>
+                                    <field name="connection_message" readonly="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="sale_order_form_gift_card_line" model="ir.ui.view">
+        <field name="name">sale.order.form.gift.card.line</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_create_shopify_order"
+                        type="object"
+                        string="Create in Shopify"
+                        class="oe_highlight"
+                        modifiers="{'invisible': [['shopify_order_id','!=',False]]}"/>
+                <button name="action_shopify_refund_and_restock"
+                        type="object"
+                        string="Refund"
+                        class="btn-secondary"
+                        modifiers="{'invisible': [['shopify_order_id','=',False]]}"/>
+            </xpath>
+
+            <xpath expr="//form/sheet/group" position="after">
+                <group string="Shopify">
+                    <field name="shopify_instance_id"/>
+                    <field name="shopify_order_id" readonly="1"/>
+                    <field name="shopify_refund_status" readonly="1"/>
+                    <field name="shopify_refund_message" readonly="1"/>
+                    <field name="shopify_odoo_refund_message" readonly="1"/>
+                    <field name="shopify_tracking_ref" readonly="1"/>
+                </group>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/list" position="inside">
+                <field name="gift_card_code"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Sale order tree: show instance -->
+    <record id="view_sale_order_tree_shopify_instance" model="ir.ui.view">
+        <field name="name">sale.order.tree.shopify.instance</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='name']" position="after">
+                <field name="shopify_instance_id"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+

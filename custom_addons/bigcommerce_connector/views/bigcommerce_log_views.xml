@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_sync_log_list" model="ir.ui.view">
+            <field name="name">bigcommerce.sync.log.list</field>
+            <field name="model">bigcommerce.sync.log</field>
+            <field name="arch" type="xml">
+                <list string="Sync Logs">
+                    <field name="create_date"/>
+                    <field name="instance_id"/>
+                    <field name="trigger_source"/>
+                    <field name="operation_type"/>
+                    <field name="resource_type"/>
+                    <field name="resource_remote_id"/>
+                    <field name="severity"/>
+                    <field name="response_status"/>
+                    <field name="retry_count"/>
+                    <field name="duration_ms"/>
+                    <field name="status"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_sync_log_form" model="ir.ui.view">
+            <field name="name">bigcommerce.sync.log.form</field>
+            <field name="model">bigcommerce.sync.log</field>
+            <field name="arch" type="xml">
+                <form string="Sync Log">
+                    <header>
+                        <button
+                            name="action_mark_success"
+                            string="Mark Success"
+                            type="object"
+                            class="oe_highlight"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_mark_failed"
+                            string="Mark Failed"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <field name="status" widget="statusbar" statusbar_visible="draft,success,failed,skipped"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="trigger_source"/>
+                                <field name="operation_type"/>
+                                <field name="resource_type"/>
+                                <field name="resource_remote_id"/>
+                            </group>
+                            <group>
+                                <field name="request_method"/>
+                                <field name="request_url"/>
+                                <field name="response_status"/>
+                                <field name="severity"/>
+                                <field name="retry_count"/>
+                                <field name="duration_ms"/>
+                                <field name="create_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Request">
+                                <field name="request_payload" nolabel="1" widget="text"/>
+                            </page>
+                            <page string="Response">
+                                <field name="response_body" nolabel="1" widget="text"/>
+                            </page>
+                            <page string="Errors &amp; Notes">
+                                <group>
+                                    <field name="error_message" widget="text"/>
+                                    <field name="note" widget="text"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_sync_log_search" model="ir.ui.view">
+            <field name="name">bigcommerce.sync.log.search</field>
+            <field name="model">bigcommerce.sync.log</field>
+            <field name="arch" type="xml">
+                <search string="Sync Logs">
+                    <field name="instance_id"/>
+                    <field name="trigger_source"/>
+                    <field name="operation_type"/>
+                    <field name="resource_type"/>
+                    <field name="resource_remote_id"/>
+                    <field name="severity"/>
+                    <field name="status"/>
+                    <filter name="filter_source_manual" string="Manual" domain="[('trigger_source', '=', 'manual')]"/>
+                    <filter name="filter_source_webhook" string="Webhook" domain="[('trigger_source', '=', 'webhook')]"/>
+                    <filter name="filter_source_cron" string="Cron" domain="[('trigger_source', '=', 'cron')]"/>
+                    <filter name="filter_source_system" string="System" domain="[('trigger_source', '=', 'system')]"/>
+                    <filter name="filter_status_draft" string="Draft" domain="[('status', '=', 'draft')]"/>
+                    <filter name="filter_status_success" string="Success" domain="[('status', '=', 'success')]"/>
+                    <filter name="filter_status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
+                    <filter name="filter_status_skipped" string="Skipped" domain="[('status', '=', 'skipped')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_by_trigger_source" string="Trigger Source" context="{'group_by': 'trigger_source'}"/>
+                        <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
+                        <filter name="group_by_severity" string="Severity" context="{'group_by': 'severity'}"/>
+                        <filter
+                            name="group_by_operation_type"
+                            string="Operation Type"
+                            context="{'group_by': 'operation_type'}"
+                        />
+                        <filter
+                            name="group_by_resource_type"
+                            string="Resource Type"
+                            context="{'group_by': 'resource_type'}"
+                        />
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_sync_log" model="ir.actions.act_window">
+            <field name="name">Sync Logs</field>
+            <field name="res_model">bigcommerce.sync.log</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
+        </record>
+
+        <record id="action_bigcommerce_inventory_sync_log" model="ir.actions.act_window">
+            <field name="name">Inventory Logs</field>
+            <field name="res_model">bigcommerce.sync.log</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
+            <field name="domain">[('operation_type', 'in', ['inventory_import', 'inventory_export'])]</field>
+            <field name="context">{'search_default_filter_status_failed': 0}</field>
+        </record>
+    </data>
+</odoo>

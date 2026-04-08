@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ===================== ACTION ===================== -->
+    <record id="action_shopify_sync_report" model="ir.actions.act_window">
+        <field name="name">Shopify Sync Reports</field>
+        <field name="res_model">shopify.sync.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('has_webhook', '=', False)]</field>
+    </record>
+
+    <!-- ===================== LIST VIEW ===================== -->
+    <record id="view_shopify_sync_report_list" model="ir.ui.view">
+        <field name="name">shopify.sync.report.list</field>
+        <field name="model">shopify.sync.report</field>
+        <field name="arch" type="xml">
+            <list string="Shopify Sync Reports">
+                <field name="create_date"/>
+                <field name="instance_id"/>
+                <field name="sync_type"/>
+                <field name="mode"/>
+                <field name="source_action"/>
+                <field name="total_records"/>
+                <field name="success_count"/>
+                <field name="error_count"/>
+                <field name="start_time"/>
+                <field name="end_time"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ===================== FORM VIEW ===================== -->
+    <record id="view_shopify_sync_report_form" model="ir.ui.view">
+        <field name="name">shopify.sync.report.form</field>
+        <field name="model">shopify.sync.report</field>
+        <field name="arch" type="xml">
+            <form string="Shopify Sync Report">
+
+                <header>
+                    <button name="action_print_pdf"
+                            type="object"
+                            string="Print PDF"
+                            class="btn-primary"/>
+                    <button name="action_export_csv"
+                            type="object"
+                            string="Download CSV"
+                            class="btn-secondary"/>
+                </header>
+
+                <sheet>
+                    <group col="4">
+                        <field name="instance_id"/>
+                        <field name="sync_type"/>
+                        <field name="mode"/>
+                        <field name="source_action"/>
+                        <field name="start_time"/>
+                        <field name="end_time"/>
+                    </group>
+
+                    <group col="3">
+                        <field name="total_records"/>
+                        <field name="success_count"/>
+                        <field name="error_count"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Lines">
+                            <field name="line_ids">
+                                <list>
+                                    <field name="source_action"/>
+                                    <field name="record_type"/>
+                                    <field name="shopify_id"/>
+                                    <field name="name"/>
+                                    <field name="status"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_shopify_dashboard" model="ir.actions.client">
+        <field name="name">Shopify Dashboard</field>
+        <field name="tag">shopify_dashboard</field>
+    </record>
+
+</odoo>

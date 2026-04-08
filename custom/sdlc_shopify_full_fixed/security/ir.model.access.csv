@@ -1,0 +1,30 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_shopify_instance_user,Shopify Instance User,model_shopify_instance,base.group_user,1,1,1,1
+access_shopify_instance_admin,Shopify Instance Admin,model_shopify_instance,base.group_system,1,1,1,1
+
+access_shopify_field_mapping_user,Shopify Field Mapping User,model_shopify_field_mapping,base.group_user,1,1,1,1
+access_shopify_field_mapping_admin,Shopify Field Mapping Admin,model_shopify_field_mapping,base.group_system,1,1,1,1
+
+access_shopify_gift_card_user,Shopify Gift Card User,model_shopify_gift_card,base.group_user,1,1,1,1
+access_shopify_gift_card_admin,Shopify Gift Card Admin,model_shopify_gift_card,base.group_system,1,1,1,1
+
+access_shopify_sync_report_user,Shopify Sync Report User,model_shopify_sync_report,base.group_user,1,1,1,1
+access_shopify_sync_report_line_user,Shopify Sync Report Line User,model_shopify_sync_report_line,base.group_user,1,1,1,1
+
+access_shopify_sync_report_admin,Shopify Sync Report Admin,model_shopify_sync_report,base.group_system,1,1,1,1
+access_shopify_sync_report_user,Shopify Sync Report user,model_shopify_sync_report,base.group_user,1,1,1,1
+access_shopify_sync_report_line_admin,Shopify Sync Report Line Admin,model_shopify_sync_report_line,base.group_system,1,1,1,1
+access_shopify_sync_report_line_user,Shopify Sync Report Line user,model_shopify_sync_report_line,base.group_user,1,1,1,
+
+access_shopify_available_field_user,shopify.available.field user,model_shopify_available_field,base.group_user,1,1,1,1
+access_shopify_available_field_admin,shopify.available.field admin,model_shopify_available_field,base.group_system,1,1,1,1
+
+access_shopify_mapping_audit_user,shopify.mapping.audit user,model_shopify_mapping_audit,base.group_user,1,1,1,1
+access_shopify_mapping_audit_line_user,shopify.mapping.audit.line user,model_shopify_mapping_audit_line,base.group_user,1,1,1,1
+access_shopify_mapping_test_wizard_user,Shopify Mapping Test Wizard,model_shopify_mapping_test_wizard,base.group_user,1,1,1,1
+access_shopify_carrier_map_user,Shopify Carrier Map User,model_shopify_carrier_map,base.group_user,1,1,1,1
+access_shopify_carrier_map_admin,Shopify Carrier Map Admin,model_shopify_carrier_map,base.group_system,1,1,1,1
+access_shopify_inventory_report_user,Shopify Inventory Report User,model_shopify_inventory_report,base.group_user,1,1,1,1
+access_shopify_inventory_report_admin,Shopify Inventory Report Admin,model_shopify_inventory_report,base.group_system,1,1,1,1
+access_ir_actions_act_window_user,Action Window User,base.model_ir_actions_act_window,base.group_user,1,0,0,0
+access_ir_actions_act_window_view_user,Action Window View User,base.model_ir_actions_act_window_view,base.group_user,1,0,0,0

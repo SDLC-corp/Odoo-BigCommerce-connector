@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!-- SHOPIFY DASHBOARD -->
+<record id="action_shopify_dashboard" model="ir.actions.client">
+    <field name="name">Shopify Dashboard</field>
+    <field name="tag">shopify_dashboard</field>
+</record>
+
+    <!-- SHOPIFY INSTANCE -->
+        <record id="action_shopify_instance" model="ir.actions.act_window">
+            <field name="name">Shopify Instances</field>
+            <field name="res_model">shopify.instance</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    <!-- SHOPIFY PRODUCTS -->
+    <record id="action_shopify_products" model="ir.actions.act_window">
+        <field name="name">Shopify Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_product_id','!=',False)]</field>
+    </record>
+
+    <!-- SHOPIFY CUSTOMERS -->
+    <record id="action_shopify_customers" model="ir.actions.act_window">
+        <field name="name">Shopify Customers</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_customer_id','!=',False)]</field>
+    </record>
+
+    <!-- SHOPIFY ORDERS -->
+    <record id="action_shopify_orders" model="ir.actions.act_window">
+        <field name="name">Shopify Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_order_id','!=',False)]</field>
+    </record>
+
+    <!-- SHOPIFY CATEGORIES -->
+    <record id="action_shopify_categories" model="ir.actions.act_window">
+        <field name="name">Shopify Categories</field>
+        <field name="res_model">product.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_collection_id','!=',False)]</field>
+    </record>
+
+    <!-- FIELD MAPPING -->
+    <record id="action_shopify_field_mapping" model="ir.actions.act_window">
+        <field name="name">Shopify Field Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- FIELD MAPPING BY TYPE -->
+    <record id="action_shopify_field_mapping_product" model="ir.actions.act_window">
+        <field name="name">Product Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('mapping_type','=','product')]</field>
+        <field name="context">{'default_mapping_type': 'product'}</field>
+    </record>
+
+    <record id="action_shopify_field_mapping_customer" model="ir.actions.act_window">
+        <field name="name">Customer Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('mapping_type','=','customer')]</field>
+        <field name="context">{'default_mapping_type': 'customer'}</field>
+    </record>
+
+    <record id="action_shopify_field_mapping_order" model="ir.actions.act_window">
+        <field name="name">Order Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('mapping_type','=','order')]</field>
+        <field name="context">{'default_mapping_type': 'order'}</field>
+    </record>
+
+    <record id="action_shopify_field_mapping_category" model="ir.actions.act_window">
+        <field name="name">Category Mapping</field>
+        <field name="res_model">shopify.field.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('mapping_type','=','category')]</field>
+        <field name="context">{'default_mapping_type': 'category'}</field>
+    </record>
+
+    <!-- GIFT CARD -->
+    <record id="action_shopify_gift_card" model="ir.actions.act_window">
+        <field name="name">Shopify Gift Cards</field>
+        <field name="res_model">shopify.gift.card</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- SYNC REPORT -->
+    <record id="action_shopify_sync_report" model="ir.actions.act_window">
+        <field name="name">Shopify Sync Reports</field>
+        <field name="res_model">shopify.sync.report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_res_partner_form_shopify" model="ir.ui.view">
+        <field name="name">res.partner.form.shopify</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form" />
+        <field name="arch" type="xml">
+            <!-- Insert a header with Shopify buttons before the sheet (safe anchor) -->
+            <xpath expr="//form/sheet" position="before">
+                <header>
+                    <button name="action_create_shopify_customer"
+                            string="Create in Shopify"
+                            type="object"
+                            class="btn-primary"
+                            modifiers="{'invisible': [['shopify_customer_id','!=', False]]}"/>
+                    <button name="action_update_shopify_customer"
+                            string="Update in Shopify"
+                            type="object"
+                            class="btn-secondary"
+                            modifiers="{'invisible': [['shopify_customer_id','=', False]]}"/>
+                </header>
+            </xpath>
+
+            <!-- SAFE XPATH, always works -->
+            <xpath expr="//form/sheet/group" position="after">
+                <group string="Shopify">
+                    <field name="shopify_instance_id" />
+                    <field name="shopify_customer_id" readonly="1" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Partner tree: show instance -->
+    <record id="view_res_partner_tree_shopify_instance" model="ir.ui.view">
+        <field name="name">res.partner.tree.shopify.instance</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email']" position="after">
+                <field name="shopify_instance_id" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

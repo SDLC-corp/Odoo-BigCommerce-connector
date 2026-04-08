@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="shopify_sync_report_pdf">
+        <t t-call="web.external_layout">
+
+            <!-- 🔥 REQUIRED IN ODOO 18 -->
+            <main>
+
+                <t t-foreach="docs" t-as="o">
+                    <div class="page">
+
+                        <h2 style="text-align:center;">
+                            Shopify Sync Report
+                        </h2>
+
+                        <br/>
+
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Instance</th>
+                                <td><span t-esc="o.instance_id.name"/></td>
+                            </tr>
+                            <tr>
+                                <th>Sync Type</th>
+                                <td><span t-esc="o.sync_type"/></td>
+                            </tr>
+                            <tr>
+                                <th>Start Time</th>
+                                <td><span t-esc="o.start_time"/></td>
+                            </tr>
+                            <tr>
+                                <th>End Time</th>
+                                <td><span t-esc="o.end_time"/></td>
+                            </tr>
+                        </table>
+
+                        <br/>
+
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Total Records</th>
+                                    <th>Success</th>
+                                    <th>Errors</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span t-esc="o.total_records"/></td>
+                                    <td><span t-esc="o.success_count"/></td>
+                                    <td><span t-esc="o.error_count"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <br/>
+
+                        <h4>Details</h4>
+
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Shopify ID</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.line_ids" t-as="l">
+                                    <td><span t-esc="l.record_type"/></td>
+                                    <td><span t-esc="l.shopify_id"/></td>
+                                    <td><span t-esc="l.name"/></td>
+                                    <td>
+                                        <span t-att-style="'color:green;' if l.status=='success' else 'color:red;'">
+                                            <t t-esc="l.status"/>
+                                        </span>
+                                    </td>
+                                    <td><span t-esc="l.error_message"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                </t>
+
+            </main>
+        </t>
+    </template>
+</odoo>

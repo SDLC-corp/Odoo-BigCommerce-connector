@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="shopify_dashboard_template">
+        <div class="sdlc-dashboard">
+            <section class="dashboard-toolbar">
+                <div class="toolbar-title">
+                    <h1>Shopify Dashboard</h1>
+                    <div class="heading-status" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <span class="status-pill muted">
+                            <t t-esc="state.data.current_instance and state.data.current_instance.name or 'All Instances'"/>
+                        </span>
+                        <span t-if="!state.loading and !state.error" class="status-pill live">LIVE</span>
+                        <span t-if="state.loading" class="status-pill loading">Loading…</span>
+                        <span t-if="state.error" class="status-pill error">Error</span>
+                    </div>
+                </div>
+                <div class="toolbar-actions">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label for="shopify_dashboard_instance">Instance</label>
+                            <select id="shopify_dashboard_instance" t-on-change="onInstanceChange" t-att-value="state.filters.instanceId or ''">
+                                    <option value="">All</option>
+                                    <t t-foreach="state.instances" t-as="inst" t-key="inst.id">
+                                        <option t-att-value="inst.id">
+                                            <t t-esc="inst.name"/>
+                                        </option>
+                                    </t>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="shopify_dashboard_date_range">Date Range</label>
+                            <select id="shopify_dashboard_date_range" t-on-change="onDateRangeChange" t-model="state.filters.dateRange">
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="7d">Last 7 days</option>
+                                    <option value="30d">Last 30 days</option>
+                                    <option value="90d">Last 90 days</option>
+                                    <option value="custom">Custom (From / To)</option>
+                            </select>
+                        </div>
+                        <t t-if="state.filters.showCustomDates">
+                            <div class="filter-item">
+                                <label for="shopify_dashboard_date_from">From</label>
+                                <input id="shopify_dashboard_date_from" type="date" t-att-value="state.filters.dateFrom" t-on-change="onDateFromChange"/>
+                            </div>
+                            <div class="filter-item">
+                                <label for="shopify_dashboard_date_to">To</label>
+                                <input id="shopify_dashboard_date_to" type="date" t-att-value="state.filters.dateTo" t-on-change="onDateToChange"/>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </section>
+
+            <t t-if="state.loading">
+                <div class="card status-card">Loading dashboard...</div>
+            </t>
+            <t t-elif="state.error">
+                <div class="card status-card error">Failed to load: <t t-esc="state.error"/></div>
+            </t>
+            <t t-else="">
+                <section class="kpi-grid">
+                    <div class="card kpi kpi-a">
+                        <span class="label">Instances</span>
+                        <span class="value" t-esc="state.data.instances || 0"/>
+                    </div>
+                    <div class="card kpi kpi-b">
+                        <span class="label">Customers</span>
+                        <span class="value" t-esc="state.data.customers || 0"/>
+                    </div>
+                    <div class="card kpi kpi-c">
+                        <span class="label">Products</span>
+                        <span class="value" t-esc="state.data.products || 0"/>
+                    </div>
+                    <div class="card kpi kpi-d">
+                        <span class="label">Categories</span>
+                        <span class="value" t-esc="state.data.total_categories || 0"/>
+                    </div>
+                    <div class="card kpi kpi-e">
+                        <span class="label">Variants</span>
+                        <span class="value" t-esc="state.data.total_variants || 0"/>
+                    </div>
+                </section>
+
+                <section class="cards-row">
+                    <div class="card sales accent-a">
+                        <div class="card-head">Earnings</div>
+                        <div class="metric primary">
+                            <t t-esc="state.data.window and state.data.window.label or '-'"/>:
+                            <strong t-esc="state.data.window_sales || 0"/>
+                        </div>
+                    </div>
+                    <div class="card sales accent-b">
+                        <div class="card-head">Order Status (Window)</div>
+                        <div class="metric ok">Delivered: <strong t-esc="state.data.range_status and state.data.range_status.delivered or 0"/></div>
+                        <div class="metric warn">Pending: <strong t-esc="state.data.range_status and state.data.range_status.pending or 0"/></div>
+                        <div class="metric danger">Cancelled: <strong t-esc="state.data.range_status and state.data.range_status.cancelled or 0"/></div>
+                    </div>
+                    <div class="card sales accent-c">
+                        <div class="card-head">Payments (Window)</div>
+                        <div class="metric">Cash on Delivery: <strong t-esc="state.data.payments and state.data.payments.cod || 0"/></div>
+                        <div class="metric">Online: <strong t-esc="state.data.payments and state.data.payments.online || 0"/></div>
+                        <div class="metric warn">Pending Amount: <strong t-esc="state.data.payments and state.data.payments.pending_amount || 0"/></div>
+                    </div>
+                    <div class="card sales accent-d">
+                        <div class="card-head">Gift Card (Window)</div>
+                        <div class="metric">Total: <strong t-esc="state.data.total_gift_cards || 0"/></div>
+                        <div class="metric ok">Used: <strong t-esc="state.data.used_gift_cards || 0"/></div>
+                        <div class="metric warn">Pending: <strong t-esc="state.data.pending_gift_cards || 0"/></div>
+                        <div class="metric danger">Failed: <strong t-esc="state.data.failed_gift_cards || 0"/></div>
+                        <div class="metric muted">Expired: <strong t-esc="state.data.expired_gift_cards || 0"/></div>
+                        <div class="metric">No Balance: <strong t-esc="state.data.no_balance_gift_cards || 0"/></div>
+                    </div>
+                    <div class="card sales accent-e">
+                        <div class="card-head">Selected Range</div>
+                        <div class="metric">From: <strong t-esc="state.data.checked_range and state.data.checked_range.date_from or '-'"/></div>
+                        <div class="metric">To: <strong t-esc="state.data.checked_range and state.data.checked_range.date_to or '-'"/></div>
+                    </div>
+                </section>
+
+                <!-- Charts removed per request -->
+
+                <section class="cards-row">
+                    <div class="card full accent">
+                        <div class="card-head">Orders</div>
+                        <div class="orders-list">
+                            <t t-if="state.data.recent_orders and state.data.recent_orders.length">
+                                <t t-foreach="state.data.recent_orders" t-as="o" t-key="o.id">
+                                    <div class="order-row" t-on-click="() => openOrder(o.id)">
+                                        <div class="order-main">
+                                            <div class="order-name" t-esc="o.name"/>
+                                            <div class="order-meta">
+                                                <span class="order-customer" t-esc="o.customer or 'Unknown'"/>
+                                                <span class="order-date">| <t t-esc="o.date"/></span>
+                                                <t t-if="o.instance">
+                                                    <span class="order-instance">| Instance: <t t-esc="o.instance"/></span>
+                                                </t>
+                                            </div>
+                                        </div>
+                                        <div class="order-side">
+                                            <span class="order-amount" t-esc="o.amount"/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <div class="muted">No orders in this window.</div>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+
+            </t>
+        </div>
+    </t>
+</templates>

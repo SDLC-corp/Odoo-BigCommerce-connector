@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_bigcommerce_product_sync" model="ir.cron">
+            <field name="name">BigCommerce Product Sync</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_sync_products()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">30</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ir_cron_bigcommerce_order_sync" model="ir.cron">
+            <field name="name">BigCommerce Order Sync</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_sync_orders()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">15</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ir_cron_bigcommerce_customer_sync" model="ir.cron">
+            <field name="name">BigCommerce Customer Sync</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_sync_customers()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">30</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ir_cron_bigcommerce_inventory_export" model="ir.cron">
+            <field name="name">BigCommerce Inventory Sync</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_sync_inventory()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">20</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ir_cron_bigcommerce_webhook_process" model="ir.cron">
+            <field name="name">BigCommerce Webhook Processing</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_process_webhooks()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">5</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="ir_cron_bigcommerce_shipment_export" model="ir.cron">
+            <field name="name">BigCommerce Shipment Export</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_export_shipments()</field>
+            <field name="interval_type">minutes</field>
+            <field name="interval_number">20</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

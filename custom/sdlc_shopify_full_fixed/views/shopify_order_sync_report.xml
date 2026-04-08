@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Search view -->
+    <record id="view_shopify_order_sync_report_search" model="ir.ui.view">
+        <field name="name">shopify.order.sync.report.search</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Order Sync">
+                <field name="partner_id"/>
+                <field name="shopify_instance_id"/>
+                <field name="state"/>
+                <filter name="shopify_orders" string="Shopify Orders"
+                        domain="[('shopify_order_id','!=',False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="grp_state" string="State" context="{'group_by':'state'}"/>
+                    <filter name="grp_odoo_to_shopify" string="Odoo → Shopify" context="{'group_by':'order_sync_status_odoo_to_shopify'}"/>
+                    <filter name="grp_shopify_to_odoo" string="Shopify → Odoo" context="{'group_by':'order_sync_status_shopify_to_odoo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- List view -->
+    <record id="view_shopify_order_sync_report_tree" model="ir.ui.view">
+        <field name="name">shopify.order.sync.report.tree</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Order Sync Report" create="false" edit="false">
+                <header>
+                    <button name="action_refresh_order_sync_status"
+                            type="object"
+                            string="Refresh Status"
+                            class="oe_highlight"/>
+                    <button name="action_sync_order_report"
+                            type="object"
+                            string="Sync Order Report"
+                            class="btn-secondary"/>
+                    <button name="action_sync_all_order_report"
+                            type="object"
+                            string="Sync All Orders"
+                            class="btn-secondary"/>
+                </header>
+                <field name="name"/>
+                <field name="date_order"/>
+                <field name="partner_id"/>
+                <field name="shopify_instance_id"/>
+                <field name="shopify_order_id"/>
+                <field name="order_sync_status_odoo_to_shopify" widget="badge"/>
+                <field name="order_sync_status_shopify_to_odoo" widget="badge"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_shopify_order_sync_report" model="ir.actions.act_window">
+        <field name="name">Order Sync Report</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_shopify_order_sync_report_tree"/>
+        <field name="search_view_id" ref="view_shopify_order_sync_report_search"/>
+        <field name="domain">[('shopify_order_id','!=',False)]</field>
+        <field name="context">{'search_default_shopify_orders':1}</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem
+        id="menu_shopify_order_sync_report"
+        name="Order Sync Report"
+        parent="menu_shopify_report_data"
+        action="action_shopify_order_sync_report"
+        sequence="7"
+        groups="base.group_user"/>
+
+</odoo>

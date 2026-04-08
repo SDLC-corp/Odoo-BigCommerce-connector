@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================= ACTION ================= -->
+    <record id="action_shopify_instance" model="ir.actions.act_window">
+        <field name="name">Shopify Instances</field>
+        <field name="res_model">shopify.instance</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ================= MENU ================= -->
+    <menuitem id="menu_shopify_root" name="Shopify"/>
+    <menuitem id="menu_shopify_instance"
+              parent="menu_shopify_root"
+              name="Instances"
+              action="action_shopify_instance"/>
+
+    <!-- ================= FORM VIEW ================= -->
+    <record id="view_shopify_instance_form" model="ir.ui.view">
+        <field name="name">shopify.instance.form</field>
+        <field name="model">shopify.instance</field>
+        <field name="arch" type="xml">
+            <form string="Shopify Instance">
+
+                <!-- ================= HEADER ================= -->
+                <header>
+                    <button name="action_test_connection" type="object"
+                            string="Test Connection" class="btn-primary"/>
+                    <button name="action_sync_products" type="object"
+                            string="Sync Products"/>
+                    <button name="action_sync_customers" type="object"
+                            string="Sync Customers"/>
+                    <button name="action_sync_orders" type="object"
+                            string="Sync Orders"/>
+                    <button name="action_sync_categories" type="object"
+                            string="Sync Categories"/>
+                    <button name="action_sync_gift_cards" type="object"
+                            string="Sync Gift Cards" class="btn-secondary"/>
+                    <button name="action_sync_inventory_levels" type="object"
+                            string="Sync Inventory" class="btn-secondary"/>
+                </header>
+
+                <!-- ================= BODY ================= -->
+                <sheet>
+
+                    <!-- BASIC CONFIG -->
+                    <group string="Basic Configuration">
+                        <field name="name"/>
+                        <field name="shop_url"/>
+                        <field name="api_version"/>
+                        <field name="access_token" password="True"/>
+                        <field name="active"/>
+                    </group>
+
+                    <notebook>
+
+                        <!-- ================= WEBHOOK AUTO SYNC ================= -->
+                        <page string="Webhook Auto Sync">
+                            <div class="o_group o_inner_group">
+                                <table class="o_group o_inner_group" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Entity</th>
+                                            <th>Create</th>
+                                            <th>Update</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><span class="o_form_label">Product</span></td>
+                                            <td><field name="webhook_product_create" nolabel="1" string=""/></td>
+                                            <td><field name="webhook_product_update" nolabel="1" string=""/></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="o_form_label">Customer</span></td>
+                                            <td><field name="webhook_customer_create" nolabel="1" string=""/></td>
+                                            <td><field name="webhook_customer_update" nolabel="1" string=""/></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="o_form_label">Order</span></td>
+                                            <td><field name="webhook_order_create" nolabel="1" string=""/></td>
+                                            <td><field name="webhook_order_update" nolabel="1" string=""/></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="o_form_label">Category</span></td>
+                                            <td><field name="webhook_category_create" nolabel="1" string=""/></td>
+                                            <td><field name="webhook_category_update" nolabel="1" string=""/></td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="o_form_label">Gift Card</span></td>
+                                            <td><field name="webhook_giftcard_create" nolabel="1" string=""/></td>
+                                            <td><field name="webhook_giftcard_update" nolabel="1" string=""/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </page>
+
+                        <!-- ================= AUTO SYNC (CRON) ================= -->
+                        <page string="Auto Sync (Cron)">
+                            <group col="2">
+
+                                <!-- ================= PRODUCTS ================= -->
+                                <group string="Products">
+                                    <field name="auto_product_sync"/>
+
+                                    <field name="auto_product_interval_type"
+                                           invisible="not auto_product_sync"/>
+
+                                    <!-- HOURLY -->
+                                    <group invisible="auto_product_interval_type != 'hours' or not auto_product_sync">
+                                        <field name="auto_sync_hour"/>
+                                    </group>
+
+                                    <!-- DAILY -->
+                                    <group invisible="auto_product_interval_type != 'days' or not auto_product_sync">
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <!-- WEEKLY -->
+                                    <group invisible="auto_product_interval_type != 'weeks' or not auto_product_sync">
+                                        <field name="auto_sync_weekday"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <!-- MONTHLY -->
+                                    <group invisible="auto_product_interval_type != 'months' or not auto_product_sync">
+                                        <field name="auto_sync_month_day"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+                                </group>
+
+                                <!-- ================= CUSTOMERS ================= -->
+                                <group string="Customers">
+                                    <field name="auto_customer_sync"/>
+
+                                    <field name="auto_customer_interval_type"
+                                           invisible="not auto_customer_sync"/>
+
+                                    <group invisible="auto_customer_interval_type != 'hours' or not auto_customer_sync">
+                                        <field name="auto_sync_hour"/>
+                                    </group>
+
+                                    <group invisible="auto_customer_interval_type != 'days' or not auto_customer_sync">
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_customer_interval_type != 'weeks' or not auto_customer_sync">
+                                        <field name="auto_sync_weekday"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_customer_interval_type != 'months' or not auto_customer_sync">
+                                        <field name="auto_sync_month_day"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+                                </group>
+
+                                <!-- ================= ORDERS ================= -->
+                                <group string="Orders">
+                                    <field name="auto_order_sync"/>
+
+                                    <field name="auto_order_interval_type"
+                                           invisible="not auto_order_sync"/>
+
+                                    <group invisible="auto_order_interval_type != 'hours' or not auto_order_sync">
+                                        <field name="auto_sync_hour"/>
+                                    </group>
+
+                                    <group invisible="auto_order_interval_type != 'days' or not auto_order_sync">
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_order_interval_type != 'weeks' or not auto_order_sync">
+                                        <field name="auto_sync_weekday"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_order_interval_type != 'months' or not auto_order_sync">
+                                        <field name="auto_sync_month_day"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+                                </group>
+
+                                <!-- ================= CATEGORIES ================= -->
+                                <group string="Categories">
+                                    <field name="auto_category_sync"/>
+
+                                    <field name="auto_category_interval_type"
+                                           invisible="not auto_category_sync"/>
+
+                                    <group invisible="auto_category_interval_type != 'hours' or not auto_category_sync">
+                                        <field name="auto_sync_hour"/>
+                                    </group>
+
+                                    <group invisible="auto_category_interval_type != 'days' or not auto_category_sync">
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_category_interval_type != 'weeks' or not auto_category_sync">
+                                        <field name="auto_sync_weekday"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_category_interval_type != 'months' or not auto_category_sync">
+                                        <field name="auto_sync_month_day"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+                                </group>
+
+                                <!-- ================= GIFT CARDS ================= -->
+                                <group string="Gift Cards">
+                                    <field name="auto_giftcard_sync"/>
+
+                                    <field name="auto_giftcard_interval_type"
+                                           invisible="not auto_giftcard_sync"/>
+
+                                    <group invisible="auto_giftcard_interval_type != 'hours' or not auto_giftcard_sync">
+                                        <field name="auto_sync_hour"/>
+                                    </group>
+
+                                    <group invisible="auto_giftcard_interval_type != 'days' or not auto_giftcard_sync">
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_giftcard_interval_type != 'weeks' or not auto_giftcard_sync">
+                                        <field name="auto_sync_weekday"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+
+                                    <group invisible="auto_giftcard_interval_type != 'months' or not auto_giftcard_sync">
+                                        <field name="auto_sync_month_day"/>
+                                        <field name="auto_sync_hour"/>
+                                        <field name="auto_sync_minute"/>
+                                    </group>
+                                </group>
+                            </group>
+                        </page>
+
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

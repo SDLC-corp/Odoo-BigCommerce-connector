@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_webhook_event_list" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.event.list</field>
+            <field name="model">bigcommerce.webhook.event</field>
+            <field name="arch" type="xml">
+                <list
+                    string="Webhook Events"
+                    default_order="received_at desc,id desc"
+                    decoration-danger="status == 'failed'"
+                    decoration-warning="status == 'pending' or status == 'processing'"
+                    decoration-success="status == 'done'"
+                >
+                    <header>
+                        <button
+                            name="action_process"
+                            string="Process Selected"
+                            type="object"
+                            class="oe_highlight"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_retry"
+                            string="Retry Selected"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                    </header>
+                    <field name="received_at"/>
+                    <field name="instance_id"/>
+                    <field name="event_type"/>
+                    <field name="scope"/>
+                    <field name="resource_id"/>
+                    <field name="phase"/>
+                    <field name="status"/>
+                    <field name="retry_count"/>
+                    <field name="processed_at"/>
+                    <field name="error_message" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_webhook_event_form" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.event.form</field>
+            <field name="model">bigcommerce.webhook.event</field>
+            <field name="arch" type="xml">
+                <form string="Webhook Event">
+                    <header>
+                        <button
+                            name="action_process"
+                            string="Process Now"
+                            type="object"
+                            class="oe_highlight"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_retry"
+                            string="Retry"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                            invisible="status != 'failed'"
+                        />
+                        <field name="status" widget="statusbar" statusbar_visible="pending,processing,done,failed"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="event_type"/>
+                                <field name="scope"/>
+                                <field name="resource_id"/>
+                                <field name="destination"/>
+                                <field name="phase"/>
+                                <field name="retry_count"/>
+                            </group>
+                            <group>
+                                <field name="webhook_id"/>
+                                <field name="signature"/>
+                                <field name="received_at" readonly="1"/>
+                                <field name="last_received_at" readonly="1"/>
+                                <field name="validated_at" readonly="1"/>
+                                <field name="dispatched_at" readonly="1"/>
+                                <field name="processing_started_at" readonly="1"/>
+                                <field name="processed_at" readonly="1"/>
+                                <field name="synced_at" readonly="1"/>
+                                <field name="failed_at" readonly="1"/>
+                                <field name="processing_finished_at" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Payload">
+                                <field name="payload_json" nolabel="1" widget="text"/>
+                            </page>
+                            <page string="Headers">
+                                <field name="headers_json" nolabel="1" widget="text"/>
+                            </page>
+                            <page string="Errors &amp; Notes">
+                                <group>
+                                    <field name="error_message" widget="text"/>
+                                    <field name="note" widget="text"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_webhook_event_search" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.event.search</field>
+            <field name="model">bigcommerce.webhook.event</field>
+            <field name="arch" type="xml">
+                <search string="Webhook Events">
+                    <field name="instance_id"/>
+                    <field name="event_type"/>
+                    <field name="scope"/>
+                    <field name="phase"/>
+                    <field name="status"/>
+                    <filter name="filter_status_pending" string="Pending" domain="[('status', '=', 'pending')]"/>
+                    <filter
+                        name="filter_status_processing"
+                        string="Processing"
+                        domain="[('status', '=', 'processing')]"
+                    />
+                    <filter name="filter_status_done" string="Done" domain="[('status', '=', 'done')]"/>
+                    <filter name="filter_status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
+                        <filter name="group_by_phase" string="Phase" context="{'group_by': 'phase'}"/>
+                        <filter name="group_by_event_type" string="Event Type" context="{'group_by': 'event_type'}"/>
+                        <filter name="group_by_scope" string="Scope" context="{'group_by': 'scope'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_webhook_event" model="ir.actions.act_window">
+            <field name="name">Webhook Events</field>
+            <field name="res_model">bigcommerce.webhook.event</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_webhook_event_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No webhook events received yet.</p>
+                <p>
+                    This screen stores incoming callback payloads from BigCommerce.
+                    Register webhooks on the connector, then trigger product/order/customer updates in BigCommerce.
+                </p>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_webhook_subscription_list" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.subscription.list</field>
+            <field name="model">bigcommerce.webhook.subscription</field>
+            <field name="arch" type="xml">
+                <list string="Webhook Subscriptions">
+                    <field name="instance_id"/>
+                    <field name="scope"/>
+                    <field name="remote_webhook_id"/>
+                    <field name="destination"/>
+                    <field name="is_active"/>
+                    <field name="status"/>
+                    <field name="last_sync_at"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_webhook_subscription_form" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.subscription.form</field>
+            <field name="model">bigcommerce.webhook.subscription</field>
+            <field name="arch" type="xml">
+                <form string="Webhook Subscription">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="scope"/>
+                                <field name="remote_webhook_id"/>
+                                <field name="is_active"/>
+                                <field name="status"/>
+                            </group>
+                            <group>
+                                <field name="destination"/>
+                                <field name="last_sync_at"/>
+                            </group>
+                        </group>
+                        <group string="Error">
+                            <field name="error_message" widget="text"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_webhook_subscription_search" model="ir.ui.view">
+            <field name="name">bigcommerce.webhook.subscription.search</field>
+            <field name="model">bigcommerce.webhook.subscription</field>
+            <field name="arch" type="xml">
+                <search string="Webhook Subscriptions">
+                    <field name="instance_id"/>
+                    <field name="scope"/>
+                    <field name="remote_webhook_id"/>
+                    <field name="status"/>
+                    <filter name="filter_active" string="Active" domain="[('status', '=', 'active')]"/>
+                    <filter name="filter_missing" string="Missing" domain="[('status', '=', 'missing')]"/>
+                    <filter name="filter_deleted" string="Deleted" domain="[('status', '=', 'deleted')]"/>
+                    <filter name="filter_error" string="Error" domain="[('status', '=', 'error')]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
+                        <filter name="group_by_scope" string="Scope" context="{'group_by': 'scope'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_webhook_subscription" model="ir.actions.act_window">
+            <field name="name">Webhook Subscriptions</field>
+            <field name="res_model">bigcommerce.webhook.subscription</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_webhook_subscription_search"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_stock_picking_form_shopify" model="ir.ui.view">
+        <field name="name">stock.picking.form.shopify.tracking</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_push_tracking_to_shopify"
+                        type="object"
+                        string="Push Tracking to Shopify"
+                        class="oe_highlight"
+                        groups="stock.group_stock_user"
+                        invisible="picking_type_code != 'outgoing'"/>
+            </header>
+
+            <xpath expr="//sheet" position="inside">
+                <group string="Shopify Tracking">
+                    <field name="shopify_instance_id"/>
+                    <field name="shopify_order_id"/>
+                    <field name="shopify_fulfillment_id" readonly="1"/>
+                    <field name="shopify_tracking_status" readonly="1"/>
+                    <field name="shopify_delivered" readonly="1"/>
+                    <field name="shopify_tracking_company"/>
+                    <field name="shopify_payment_status" readonly="1"/>
+                    <field name="shopify_payment_method" readonly="1"/>
+                    <field name="shopify_customer_email" readonly="1"/>
+                    <field name="shopify_customer_phone" readonly="1"/>
+                    <field name="shopify_last_push_status" readonly="1"/>
+                    <field name="shopify_last_push_message" readonly="1"/>
+                    <button name="action_refresh_shopify_tracking"
+                            type="object"
+                            string="Refresh Tracking"
+                            class="oe_highlight"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

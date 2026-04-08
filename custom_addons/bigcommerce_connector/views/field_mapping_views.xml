@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_field_mapping_form" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.form</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <form string="BigCommerce Field Mapping">
+                    <header>
+                        <button
+                            name="action_load_bigcommerce_fields"
+                            type="object"
+                            string="Load BigCommerce Fields"
+                        />
+                        <button
+                            name="action_save_mapping"
+                            type="object"
+                            string="Save Mapping"
+                            class="btn-secondary"
+                        />
+                        <button
+                            name="action_test_mapping"
+                            type="object"
+                            string="Test Mapping"
+                            class="btn-primary"
+                        />
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="connector_id"/>
+                            <field name="mapping_type"/>
+                            <field name="direction"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="odoo_field_id"/>
+                            <field
+                                name="bigcommerce_field_id"
+                                options="{'no_create': true, 'no_open': true}"
+                            />
+                            <field name="is_required"/>
+                            <field name="default_value"/>
+                        </group>
+                        <group invisible="1">
+                            <field name="name"/>
+                            <field name="odoo_model"/>
+                            <field name="odoo_field_name"/>
+                            <field name="bigcommerce_field_name"/>
+                            <field name="bigcommerce_field_path"/>
+                            <field name="transform_type"/>
+                            <field name="selection_map_json"/>
+                            <field name="sequence"/>
+                            <field name="notes"/>
+                            <field name="is_system"/>
+                            <field name="company_id"/>
+                            <field name="source_example"/>
+                            <field name="target_example"/>
+                            <field name="odoo_field_label"/>
+                            <field name="odoo_field_type"/>
+                            <field name="bigcommerce_product_field"/>
+                            <field name="bigcommerce_customer_field"/>
+                            <field name="bigcommerce_order_field"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_field_mapping_list_product" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.list.product</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Product Field Mappings" default_order="connector_id,id">
+                    <field name="connector_id"/>
+                    <field name="odoo_field_id"/>
+                    <field name="bigcommerce_field_id"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_field_mapping_list_customer" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.list.customer</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Customer Field Mappings" default_order="connector_id,id">
+                    <field name="connector_id"/>
+                    <field name="odoo_field_id"/>
+                    <field name="bigcommerce_field_id"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_field_mapping_list_order" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.list.order</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Order Field Mappings" default_order="connector_id,id">
+                    <field name="connector_id"/>
+                    <field name="odoo_field_id"/>
+                    <field name="bigcommerce_field_id"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_field_mapping_list_category" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.list.category</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Category Field Mappings" default_order="connector_id,id">
+                    <field name="connector_id"/>
+                    <field name="odoo_field_id"/>
+                    <field name="bigcommerce_field_id"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_field_mapping_search" model="ir.ui.view">
+            <field name="name">bigcommerce.field.mapping.search</field>
+            <field name="model">bigcommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <search string="Field Mappings">
+                    <field name="connector_id"/>
+                    <field name="mapping_type"/>
+                    <field name="direction"/>
+                    <field name="odoo_field_id"/>
+                    <field name="bigcommerce_field_id"/>
+                    <filter name="filter_active" string="Active" domain="[('active', '=', True)]"/>
+                    <filter name="filter_inactive" string="Inactive" domain="[('active', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_field_mapping" model="ir.actions.act_window">
+            <field name="name">Field Mappings</field>
+            <field name="res_model">bigcommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
+        </record>
+
+        <record id="action_bigcommerce_field_mapping_product" model="ir.actions.act_window">
+            <field name="name">Product Field Mapping</field>
+            <field name="res_model">bigcommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_bigcommerce_field_mapping_list_product"/>
+            <field name="domain">[('mapping_type', '=', 'product')]</field>
+            <field name="context">{'default_mapping_type': 'product', 'default_direction': 'import'}</field>
+            <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
+        </record>
+
+        <record id="action_bigcommerce_field_mapping_customer" model="ir.actions.act_window">
+            <field name="name">Customer Field Mapping</field>
+            <field name="res_model">bigcommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_bigcommerce_field_mapping_list_customer"/>
+            <field name="domain">[('mapping_type', '=', 'customer')]</field>
+            <field name="context">{'default_mapping_type': 'customer', 'default_direction': 'import'}</field>
+            <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
+        </record>
+
+        <record id="action_bigcommerce_field_mapping_order" model="ir.actions.act_window">
+            <field name="name">Order Field Mapping</field>
+            <field name="res_model">bigcommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_bigcommerce_field_mapping_list_order"/>
+            <field name="domain">[('mapping_type', '=', 'order')]</field>
+            <field name="context">{'default_mapping_type': 'order', 'default_direction': 'import'}</field>
+            <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
+        </record>
+
+        <record id="action_bigcommerce_field_mapping_category" model="ir.actions.act_window">
+            <field name="name">Category Field Mapping</field>
+            <field name="res_model">bigcommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_bigcommerce_field_mapping_list_category"/>
+            <field name="domain">[('mapping_type', '=', 'category')]</field>
+            <field name="context">{'default_mapping_type': 'category', 'default_direction': 'import'}</field>
+            <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
+        </record>
+    </data>
+</odoo>

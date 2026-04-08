@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- REPORT ACTION -->
+    <report
+    id="action_report_shopify_sync"
+    model="shopify.sync.report"
+    string="Shopify Sync Report"
+    report_type="qweb-pdf"
+    name="sdlc_shopify_full_fixed.shopify_sync_report_pdf"
+    file="sdlc_shopify_full_fixed.shopify_sync_report_pdf"
+/>
+</odoo>

@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_connector_tree" model="ir.ui.view">
+            <field name="name">bigcommerce.connector.tree</field>
+            <field name="model">bigcommerce.connector</field>
+            <field name="arch" type="xml">
+                <list string="BigCommerce Connectors" default_order="name">
+                    <field name="name"/>
+                    <field name="company_id"/>
+                    <field name="store_hash"/>
+                    <field name="inventory_master"/>
+                    <field name="state"/>
+                    <field name="last_order_sync_at"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_connector_form" model="ir.ui.view">
+            <field name="name">bigcommerce.connector.form</field>
+            <field name="model">bigcommerce.connector</field>
+            <field name="arch" type="xml">
+                <form string="BigCommerce Connector">
+                    <header>
+                        <button
+                            name="action_test_connection"
+                            string="Test Connection"
+                            type="object"
+                            class="oe_highlight"
+                        />
+                        <button
+                            name="action_sync_products"
+                            string="Sync Products"
+                            type="object"
+                        />
+                        <button
+                            name="action_sync_categories"
+                            string="Sync Categories"
+                            type="object"
+                        />
+                        <button
+                            name="action_sync_customers"
+                            string="Sync Customers"
+                            type="object"
+                        />
+                        <button
+                            name="action_export_customers"
+                            string="Export Customers"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_sync_orders"
+                            string="Sync Orders"
+                            type="object"
+                        />
+                        <button
+                            name="action_export_products"
+                            string="Export Products"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_sync_inventory"
+                            string="Sync Inventory"
+                            type="object"
+                        />
+                        <button
+                            name="action_export_shipments"
+                            string="Export Shipments"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_process_webhooks"
+                            string="Process Webhooks"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <button
+                            name="action_validate_field_mappings"
+                            string="Validate Field Mappings"
+                            type="object"
+                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                        />
+                        <field name="state" widget="statusbar" statusbar_visible="draft,connected,error"/>
+                    </header>
+                    <sheet>
+                        <notebook>
+                            <page string="Dashboard">
+                                <group>
+                                    <group>
+                                        <field name="dashboard_status" readonly="1"/>
+                                        <field name="dashboard_last_sync_at" readonly="1"/>
+                                        <field name="dashboard_error_count" readonly="1"/>
+                                        <field name="dashboard_webhook_failed_count" readonly="1"/>
+                                    </group>
+                                    <group>
+                                        <field name="dashboard_product_count" readonly="1"/>
+                                        <field name="dashboard_order_count" readonly="1"/>
+                                        <field name="dashboard_webhook_pending_count" readonly="1"/>
+                                        <field name="dashboard_webhook_active_count" readonly="1"/>
+                                        <field name="dashboard_webhook_last_received_at" readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="General">
+                                <group>
+                                    <group>
+                                        <field name="name" placeholder="BigCommerce Store - US"/>
+                                        <field name="active"/>
+                                        <field name="company_id"/>
+                                    </group>
+                                    <group>
+                                        <field name="debug_mode"/>
+                                        <field name="state" readonly="1"/>
+                                        <field name="is_ready_for_connection" readonly="1"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="note" placeholder="Internal notes for this BigCommerce instance..."/>
+                                </group>
+                            </page>
+                            <page string="API Credentials">
+                                <group>
+                                    <group>
+                                        <field name="store_hash" placeholder="Auto-filled from API URL (stores/&lt;hash&gt;)"/>
+                                        <field
+                                            name="api_base_url"
+                                            placeholder="https://api.bigcommerce.com/stores"
+                                        />
+                                        <field name="client_id" placeholder="Optional client id"/>
+                                        <field
+                                            name="webhook_callback_url"
+                                            placeholder="Auto-filled from system base URL + store hash (override if needed)"
+                                        />
+                                        <field name="webhook_enabled"/>
+                                    </group>
+                                    <group>
+                                        <field
+                                            name="access_token"
+                                            password="True"
+                                            placeholder="Required for real API calls"
+                                        />
+                                        <field
+                                            name="client_secret"
+                                            password="True"
+                                            placeholder="Optional client secret"
+                                        />
+                                        <field
+                                            name="webhook_secret"
+                                            password="True"
+                                            groups="base.group_system"
+                                            placeholder="Generated shared secret for webhook header validation"
+                                        />
+                                        <button
+                                            name="action_generate_webhook_secret"
+                                            type="object"
+                                            string="Generate Secret"
+                                            class="oe_link"
+                                            groups="base.group_system"
+                                        />
+                                    </group>
+                                </group>
+                                <group string="Webhook Actions">
+                                    <group>
+                                        <button
+                                            name="action_register_webhooks"
+                                            string="Register Webhooks"
+                                            type="object"
+                                            class="oe_highlight"
+                                            groups="base.group_user"
+                                        />
+                                        <button
+                                            name="action_sync_webhooks_status"
+                                            string="Sync Webhooks"
+                                            type="object"
+                                            groups="base.group_user"
+                                        />
+                                        <button
+                                            name="action_delete_webhooks"
+                                            string="Delete Webhooks"
+                                            type="object"
+                                            groups="base.group_user"
+                                        />
+                                        <button
+                                            name="action_send_test_webhook_event"
+                                            string="Send Test Event"
+                                            type="object"
+                                            groups="base.group_user"
+                                        />
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Business Settings">
+                                <group>
+                                    <group>
+                                        <field name="warehouse_id"/>
+                                        <field name="pricelist_id"/>
+                                    </group>
+                                    <group>
+                                        <field name="inventory_master"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Sync Info">
+                                <group>
+                                    <field name="last_product_sync_at" readonly="1"/>
+                                    <field name="last_category_sync_at" readonly="1"/>
+                                    <field name="last_customer_sync_at" readonly="1"/>
+                                    <field name="last_order_sync_at" readonly="1"/>
+                                    <field name="last_inventory_export_at" readonly="1"/>
+                                    <field name="last_shipment_export_at" readonly="1"/>
+                                    <field name="last_webhook_process_at" readonly="1"/>
+                                    <field name="webhook_last_sync_at" readonly="1"/>
+                                    <field name="last_tested_at" readonly="1"/>
+                                    <field name="connection_message" readonly="1"/>
+                                </group>
+                            </page>
+                            <page string="Automation">
+                                <group>
+                                    <group>
+                                        <field name="auto_sync_products"/>
+                                        <field name="auto_sync_orders"/>
+                                        <field name="auto_sync_customers"/>
+                                        <field name="auto_sync_inventory"/>
+                                        <field name="auto_sync_shipments"/>
+                                        <field name="auto_webhook_process"/>
+                                    </group>
+                                    <group>
+                                        <field name="sync_limit_product"/>
+                                        <field name="sync_limit_order"/>
+                                        <field name="sync_limit_inventory"/>
+                                        <field name="sync_limit_shipment"/>
+                                        <field name="sync_limit_webhook"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="AI Assistant">
+                                <group>
+                                    <group>
+                                        <field name="ai_chat_enabled"/>
+                                        <field name="gemini_model" placeholder="gemini-1.5-flash"/>
+                                    </group>
+                                    <group groups="base.group_system">
+                                        <field
+                                            name="gemini_api_key"
+                                            password="True"
+                                            placeholder="Gemini API key (backend only)"
+                                        />
+                                    </group>
+                                </group>
+                                <group>
+                                    <field
+                                        name="ai_system_prompt"
+                                        placeholder="Optional system instructions for the dashboard AI assistant..."
+                                    />
+                                </group>
+                            </page>
+                            <page string="Field Mapping" groups="base.group_user">
+                                <group>
+                                    <button
+                                        name="action_validate_field_mappings"
+                                        string="Validate Field Mappings"
+                                        type="object"
+                                    />
+                                </group>
+                                <field name="mapping_ids" context="{'default_connector_id': id}">
+                                    <list string="Field Mappings" default_order="mapping_type,id">
+                                        <field name="active"/>
+                                        <field name="mapping_type"/>
+                                        <field name="direction"/>
+                                        <field name="odoo_field_id"/>
+                                        <field name="bigcommerce_field_id"/>
+                                        <field name="is_required"/>
+                                        <field name="default_value"/>
+                                    </list>
+                                    <form string="Field Mapping Rule">
+                                        <header>
+                                            <button name="action_load_bigcommerce_fields" type="object" string="Load BigCommerce Fields"/>
+                                            <button name="action_save_mapping" type="object" string="Save Mapping"/>
+                                            <button name="action_test_mapping" type="object" string="Test Mapping"/>
+                                        </header>
+                                        <group>
+                                            <group>
+                                                <field name="active"/>
+                                                <field name="mapping_type"/>
+                                                <field name="direction"/>
+                                            </group>
+                                            <group>
+                                                <field name="connector_id" readonly="1"/>
+                                                <field name="odoo_field_id"/>
+                                                <field name="bigcommerce_field_id" options="{'no_create': true, 'no_open': true}"/>
+                                                <field name="is_required"/>
+                                                <field name="default_value"/>
+                                            </group>
+                                        </group>
+                                        <group invisible="1">
+                                            <field name="name"/>
+                                            <field name="odoo_model"/>
+                                            <field name="odoo_field_name"/>
+                                            <field name="bigcommerce_field_name"/>
+                                            <field name="sequence"/>
+                                            <field name="is_system"/>
+                                            <field name="bigcommerce_field_path"/>
+                                            <field name="transform_type"/>
+                                            <field name="selection_map_json"/>
+                                            <field name="notes"/>
+                                            <field name="bigcommerce_product_field"/>
+                                            <field name="bigcommerce_customer_field"/>
+                                            <field name="bigcommerce_order_field"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_connector" model="ir.actions.act_window">
+            <field name="name">Connectors</field>
+            <field name="res_model">bigcommerce.connector</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first BigCommerce connector.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

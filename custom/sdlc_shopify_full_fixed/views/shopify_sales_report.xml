@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Search view: filters & group by for Shopify sales -->
+    <record id="view_shopify_sales_report_search" model="ir.ui.view">
+        <field name="name">shopify.sales.report.search</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="shopify_instance_id"/>
+                <field name="shopify_financial_status"/>
+                <field name="state"/>
+            </field>
+            <filter name="my_sale_orders_filter" position="after">
+                <separator/>
+                <filter name="shopify_orders" string="Shopify Orders"
+                        domain="[('shopify_order_id','!=',False)]"
+                        help="Show only orders synced with Shopify"/>
+            </filter>
+            <group position="inside">
+                <filter name="grp_instance" string="Instance" context="{'group_by':'shopify_instance_id'}"/>
+                <filter name="grp_financial" string="Payment Status" context="{'group_by':'shopify_financial_status'}"/>
+                <filter name="grp_customer" string="Customer" context="{'group_by':'partner_id'}"/>
+                <filter name="grp_state" string="State" context="{'group_by':'state'}"/>
+            </group>
+        </field>
+    </record>
+
+    <!-- Pivot view -->
+    <record id="view_shopify_sales_report_pivot" model="ir.ui.view">
+        <field name="name">shopify.sales.report.pivot</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Shopify Sales" disable_linking="False">
+                <field name="amount_total" type="measure"/>
+                <field name="amount_untaxed" type="measure"/>
+                <field name="shopify_instance_id" type="row"/>
+                <field name="shopify_financial_status" type="row"/>
+                <field name="partner_id" type="row"/>
+                <field name="date_order" type="col" interval="month"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Graph view -->
+    <record id="view_shopify_sales_report_graph" model="ir.ui.view">
+        <field name="name">shopify.sales.report.graph</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <graph string="Shopify Sales" type="bar" stacked="True">
+                <field name="date_order" interval="month"/>
+                <field name="amount_total" type="measure"/>
+                <field name="shopify_instance_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- List view (read-only snapshot) -->
+    <record id="view_shopify_sales_report_tree" model="ir.ui.view">
+        <field name="name">shopify.sales.report.tree</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Shopify Sales" create="false" edit="false">
+                <field name="name"/>
+                <field name="date_order"/>
+                <field name="partner_id"/>
+                <field name="shopify_instance_id"/>
+                <field name="shopify_order_id"/>
+                <field name="shopify_financial_status"/>
+                <field name="shopify_payment_method"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_shopify_sales_report" model="ir.actions.act_window">
+        <field name="name">Sales Report</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="view_id" ref="view_shopify_sales_report_graph"/>
+        <field name="search_view_id" ref="view_shopify_sales_report_search"/>
+        <field name="domain">[('shopify_order_id','!=',False)]</field>
+        <field name="context">{'search_default_shopify_orders':1, 'group_by':'shopify_instance_id'}</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem
+        id="menu_shopify_sales_report"
+        name="Sales Report"
+        parent="menu_shopify_report_data"
+        action="action_shopify_sales_report"
+        sequence="5"
+        groups="base.group_user"/>
+
+</odoo>

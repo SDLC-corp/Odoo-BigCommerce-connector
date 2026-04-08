@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_bigcommerce_category_binding_list" model="ir.ui.view">
+            <field name="name">bigcommerce.category.binding.list</field>
+            <field name="model">bigcommerce.category.binding</field>
+            <field name="arch" type="xml">
+                <list string="Category Bindings">
+                    <field name="instance_id"/>
+                    <field name="category_id"/>
+                    <field name="bigcommerce_category_id"/>
+                    <field name="bigcommerce_parent_category_id"/>
+                    <field name="bigcommerce_category_name"/>
+                    <field name="sync_state"/>
+                    <field name="last_synced_at"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_bigcommerce_category_binding_form" model="ir.ui.view">
+            <field name="name">bigcommerce.category.binding.form</field>
+            <field name="model">bigcommerce.category.binding</field>
+            <field name="arch" type="xml">
+                <form string="Category Binding">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="category_id"/>
+                                <field name="sync_state"/>
+                                <field name="last_synced_at" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="bigcommerce_category_id"/>
+                                <field name="bigcommerce_parent_category_id"/>
+                                <field name="bigcommerce_category_name"/>
+                            </group>
+                        </group>
+                        <group string="Error">
+                            <field name="last_error" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_category_binding" model="ir.actions.act_window">
+            <field name="name">Category Bindings</field>
+            <field name="res_model">bigcommerce.category.binding</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

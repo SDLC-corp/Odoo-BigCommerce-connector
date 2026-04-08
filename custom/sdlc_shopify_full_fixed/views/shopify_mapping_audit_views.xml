@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================================================== -->
+    <!-- ACTION : Shopify Mapping Audit -->
+    <!-- ===================================================== -->
+    <record id="action_shopify_mapping_audit" model="ir.actions.act_window">
+        <field name="name">Mapping Audit</field>
+        <field name="res_model">shopify.mapping.audit</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No mapping audit records yet.
+            </p>
+        </field>
+    </record>
+    
+    <!-- ===================================================== -->
+    <!-- LIST VIEW : Shopify Mapping Audit -->
+    <!-- ===================================================== -->
+    <record id="view_shopify_mapping_audit_list" model="ir.ui.view">
+        <field name="name">shopify.mapping.audit.list</field>
+        <field name="model">shopify.mapping.audit</field>
+        <field name="arch" type="xml">
+            <list string="Shopify Mapping Audit">
+                <field name="create_date"/>
+                <field name="instance_id"/>
+                <field name="mapping_type"/>
+                <field name="direction"/>
+                <field name="source_action"/>
+                <field name="status"/>
+                <field name="record_name"/>
+            </list>
+        </field>
+    </record>
+    <!-- ===================================================== -->
+    <!-- FORM VIEW : Shopify Mapping Audit -->
+    <!-- ===================================================== -->
+    <record id="view_shopify_mapping_audit_form" model="ir.ui.view">
+        <field name="name">shopify.mapping.audit.form</field>
+        <field name="model">shopify.mapping.audit</field>
+        <field name="arch" type="xml">
+            <form string="Mapping Audit">
+                <sheet>
+                    <!-- HEADER INFO -->
+                    <group>
+                        <field name="instance_id" readonly="1"/>
+                        <field name="mapping_type" readonly="1"/>
+                        <field name="direction" readonly="1"/>
+                        <field name="source_action" readonly="1"/>
+                        <field name="status" readonly="1"/>
+                        <field name="record_name" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <!-- ================= CHANGES TAB ================= -->
+                        <page string="Changes">
+                            <field name="line_ids" readonly="1">
+                                <list>
+                                    <field name="scope"/>
+                                    <field name="odoo_field"/>
+                                    <field name="shopify_field"/>
+                                    <field name="old_value"/>
+                                    <field name="new_value"/>
+                                    <field name="applied"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- ================= PAYLOAD TAB ================= -->
+                        <page string="Payload">
+                            <field name="payload_after" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

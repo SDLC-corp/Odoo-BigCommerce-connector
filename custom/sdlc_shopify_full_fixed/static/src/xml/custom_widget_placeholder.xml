@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="sdlc_shopify_full_fixed.sdlcCustomContentKanbanLikeWidget">
+        <div class="o_custom_content_placeholder"></div>
+    </t>
+</templates>

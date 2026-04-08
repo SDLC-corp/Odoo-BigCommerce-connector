@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action -->
+    <record id="action_shopify_mapping_audit" model="ir.actions.act_window">
+        <field name="name">Mapping Audit</field>
+        <field name="res_model">shopify.mapping.audit</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Root Menu (agar already hai to same id mat do) -->
+    <menuitem id="menu_shopify_root" name="Shopify" sequence="10"/>
+
+    <!-- Audit Menu -->
+    <menuitem id="menu_shopify_mapping_audit"
+              name="Mapping Reports"
+              parent="menu_shopify_report_data"
+              action="action_shopify_mapping_audit"
+              sequence="50"/>
+</odoo>
