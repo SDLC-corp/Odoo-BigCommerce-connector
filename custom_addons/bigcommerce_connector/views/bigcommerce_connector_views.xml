@@ -91,7 +91,6 @@
                             <page string="Dashboard">
                                 <group>
                                     <group>
-                                        <field name="dashboard_status" readonly="1"/>
                                         <field name="dashboard_last_sync_at" readonly="1"/>
                                         <field name="dashboard_error_count" readonly="1"/>
                                         <field name="dashboard_webhook_failed_count" readonly="1"/>
@@ -231,6 +230,7 @@
                                     <group>
                                         <field name="sync_limit_product"/>
                                         <field name="sync_limit_order"/>
+                                        <field name="sync_limit_customer"/>
                                         <field name="sync_limit_inventory"/>
                                         <field name="sync_limit_shipment"/>
                                         <field name="sync_limit_webhook"/>

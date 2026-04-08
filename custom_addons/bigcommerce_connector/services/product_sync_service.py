@@ -39,10 +39,19 @@ class BigCommerceProductSyncService:
             request_method="GET",
             request_url=self.client._build_url("/v3/catalog/products"),
         )
-        # Ensure category bindings exist before product category mapping.
-        BigCommerceCategorySyncService(
-            self.instance.with_context(bigcommerce_skip_category_logs=True)
-        ).import_categories(limit=500)
+        # Ensure category bindings exist before product category mapping, but avoid
+        # expensive full category refresh on every product sync.
+        force_category_refresh = bool(self.env.context.get("bigcommerce_force_category_refresh"))
+        has_category_binding = bool(
+            self.env["bigcommerce.category.binding"].sudo().search(
+                [("instance_id", "=", self.instance.id)],
+                limit=1,
+            )
+        )
+        if force_category_refresh or not has_category_binding:
+            BigCommerceCategorySyncService(
+                self.instance.with_context(bigcommerce_skip_category_logs=True)
+            ).import_categories(limit=500)
         created = updated = failed = 0
         failed_items = []
         processed = 0
@@ -192,8 +201,10 @@ class BigCommerceProductSyncService:
                 variant = self.env["product.product"].search([("default_code", "=", sku)], limit=1)
                 self._product_by_sku_cache[sku] = variant or self.env["product.product"]
             template = variant.product_tmpl_id if variant else self.env["product.template"]
+        remote_name = self._clean_text(bc_product.get("name"), max_len=255)
+        base_name = remote_name or "BigCommerce Product"
         vals = {
-            "name": self._clean_text(bc_product.get("name"), max_len=255) or "BigCommerce Product",
+            "name": base_name,
             "sale_ok": True,
         }
         bc_product_type = str(bc_product.get("type") or "").strip().lower()
@@ -220,7 +231,27 @@ class BigCommerceProductSyncService:
             direction="import",
             raise_on_required=False,
         )
-        vals.update(mapping_result.get("vals") or {})
+        mapped_vals = mapping_result.get("vals") or {}
+        vals.update(mapped_vals)
+        mapped_name = self._clean_text(vals.get("name"), max_len=255)
+        if "name" in mapped_vals:
+            # Respect explicit field mapping for name, including numeric values.
+            if mapped_name is not False:
+                vals["name"] = mapped_name
+            else:
+                vals["name"] = self._resolve_safe_product_name(
+                    mapped_name=False,
+                    remote_name=remote_name,
+                    existing_name=(template.name if template else False),
+                    sku=sku,
+                )
+        else:
+            vals["name"] = self._resolve_safe_product_name(
+                mapped_name=mapped_name,
+                remote_name=remote_name,
+                existing_name=(template.name if template else False),
+                sku=sku,
+            )
         vals = self._sanitize_template_vals(vals=vals, template=template)
         if template:
             template.write(vals)
@@ -253,6 +284,10 @@ class BigCommerceProductSyncService:
             self._create_or_update_variant_binding(template, variant, bc_variant)
 
     def _sync_images(self, template, bc_product):
+        if self.env.context.get("bigcommerce_skip_images"):
+            return
+        if template and template.image_1920 and not self.env.context.get("bigcommerce_force_image_refresh"):
+            return
         images = bc_product.get("images") or []
         if not images:
             return
@@ -292,7 +327,7 @@ class BigCommerceProductSyncService:
         remote_id = self._as_id(bc_product.get("id"))
         if not remote_id:
             return
-        inventory_level = self._safe_float(bc_product.get("inventory_level"), default=None)
+        inventory_level = self._extract_product_inventory_level(bc_product)
         vals = {
             "instance_id": self.instance.id,
             "product_tmpl_id": template.id,
@@ -483,7 +518,7 @@ class BigCommerceProductSyncService:
             return
         if not template or not template.product_variant_id:
             return
-        qty = self._safe_int(bc_product.get("inventory_level"), default=None)
+        qty = self._safe_int(self._extract_product_inventory_level(bc_product), default=None)
         if qty is None:
             return
         location = self._get_inventory_location()
@@ -532,7 +567,7 @@ class BigCommerceProductSyncService:
         return self._inventory_location or False
 
     def _clean_text(self, value, max_len=False):
-        if value in (None, False):
+        if value is None or value is False:
             return False
         text = str(value).strip()
         if not text:
@@ -542,15 +577,60 @@ class BigCommerceProductSyncService:
         return text
 
     def _safe_float(self, value, default=0.0):
-        if value in (None, False, ""):
+        if value is None or (isinstance(value, bool) and value is False):
+            return default
+        if isinstance(value, str) and not value.strip():
             return default
         try:
             return float(value)
         except (TypeError, ValueError):
             return default
 
+    def _is_numeric_text(self, value):
+        text = self._clean_text(value)
+        if not text:
+            return False
+        try:
+            float(text)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    def _extract_product_inventory_level(self, bc_product):
+        """Resolve inventory level from product payload, fallback to variant sum."""
+        direct_level = self._safe_float((bc_product or {}).get("inventory_level"), default=None)
+        if direct_level is not None:
+            return direct_level
+
+        variants = (bc_product or {}).get("variants") or []
+        if not isinstance(variants, list):
+            return None
+        levels = []
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            value = self._safe_float(variant.get("inventory_level"), default=None)
+            if value is not None:
+                levels.append(value)
+        if not levels:
+            return None
+        return sum(levels)
+
+    def _resolve_safe_product_name(self, mapped_name=False, remote_name=False, existing_name=False, sku=False):
+        """Pick a readable product name; reject inventory-like numeric names."""
+        for candidate in (mapped_name, remote_name, existing_name):
+            text = self._clean_text(candidate, max_len=255)
+            if text and not self._is_numeric_text(text):
+                return text
+        safe_sku = self._clean_text(sku, max_len=64)
+        if safe_sku:
+            return safe_sku
+        return "BigCommerce Product"
+
     def _safe_int(self, value, default=0):
-        if value in (None, False, ""):
+        if value is None or (isinstance(value, bool) and value is False):
+            return default
+        if isinstance(value, str) and not value.strip():
             return default
         try:
             return int(float(value))

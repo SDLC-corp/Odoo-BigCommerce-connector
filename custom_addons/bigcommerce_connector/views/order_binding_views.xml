@@ -8,12 +8,12 @@
                 <list string="Order Bindings">
                     <field name="instance_id"/>
                     <field name="bigcommerce_order_number"/>
-                    <field name="bigcommerce_order_id"/>
                     <field name="sale_order_id"/>
-                    <field name="customer_name"/>
-                    <field name="customer_email" optional="hide"/>
+                    <field name="customer_name" string="Customer Name"/>
+                    <field name="customer_email" string="Customer Email"/>
                     <field name="currency_id" optional="hide"/>
-                    <field name="sale_order_amount_total" string="Total"/>
+                    <field name="sale_order_amount_total" string="Odoo Total" optional="hide"/>
+                    <field name="bigcommerce_total_display" string="Total"/>
                     <field name="status_on_bigcommerce"/>
                     <field name="sale_order_state" string="Odoo Status"/>
                     <field name="sync_state"/>

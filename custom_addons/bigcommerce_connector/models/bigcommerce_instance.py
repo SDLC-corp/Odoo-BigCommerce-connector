@@ -3,6 +3,7 @@
 import logging
 import secrets
 import ipaddress
+from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 from odoo import _, api, fields, models
@@ -128,6 +129,7 @@ class BigCommerceConnector(models.Model):
     auto_webhook_process = fields.Boolean(default=True)
     sync_limit_product = fields.Integer(default=100)
     sync_limit_order = fields.Integer(default=50)
+    sync_limit_customer = fields.Integer(default=100)
     sync_limit_inventory = fields.Integer(default=200)
     sync_limit_shipment = fields.Integer(default=100)
     sync_limit_webhook = fields.Integer(default=200)
@@ -380,10 +382,13 @@ class BigCommerceConnector(models.Model):
     )
     def _compute_dashboard_metrics(self):
         product_model = self.env["bigcommerce.product.binding"].sudo()
+        category_model = self.env["bigcommerce.category.binding"].sudo()
+        customer_model = self.env["bigcommerce.customer.binding"].sudo()
         order_model = self.env["bigcommerce.order.binding"].sudo()
         log_model = self.env["bigcommerce.sync.log"].sudo()
         webhook_event_model = self.env["bigcommerce.webhook.event"].sudo()
         webhook_subscription_model = self.env["bigcommerce.webhook.subscription"].sudo()
+        recent_failure_since = fields.Datetime.now() - timedelta(hours=24)
         for instance in self:
             instance.dashboard_product_count = product_model.search_count(
                 [
@@ -402,14 +407,23 @@ class BigCommerceConnector(models.Model):
                     ("imported_at", "!=", False),
                 ]
             )
-            instance.dashboard_error_count = log_model.search_count(
+
+            open_binding_errors = (
+                product_model.search_count([("instance_id", "=", instance.id), ("sync_state", "=", "error")])
+                + category_model.search_count([("instance_id", "=", instance.id), ("sync_state", "=", "error")])
+                + customer_model.search_count([("instance_id", "=", instance.id), ("sync_state", "=", "error")])
+                + order_model.search_count([("instance_id", "=", instance.id), ("sync_state", "=", "error")])
+            )
+            recent_failed_sync_logs = log_model.search_count(
                 [
                     ("instance_id", "=", instance.id),
                     ("status", "=", "failed"),
+                    ("create_date", ">=", recent_failure_since),
                     (
                         "operation_type",
                         "in",
                         (
+                            "connection_test",
                             "product_import",
                             "product_export",
                             "category_import",
@@ -425,6 +439,8 @@ class BigCommerceConnector(models.Model):
                     ),
                 ]
             )
+            connection_error_count = 1 if instance.state == "error" else 0
+            instance.dashboard_error_count = open_binding_errors + recent_failed_sync_logs + connection_error_count
             instance.dashboard_webhook_pending_count = webhook_event_model.search_count(
                 [("instance_id", "=", instance.id), ("status", "in", ("pending", "processing"))]
             )
@@ -463,9 +479,9 @@ class BigCommerceConnector(models.Model):
             sync_dates = [value for value in sync_dates if value]
             instance.dashboard_last_sync_at = max(sync_dates) if sync_dates else False
 
-            if instance.dashboard_error_count or instance.dashboard_webhook_failed_count:
+            if instance.state == "error" or open_binding_errors or instance.dashboard_webhook_failed_count:
                 instance.dashboard_status = "error"
-            elif instance.dashboard_webhook_pending_count:
+            elif recent_failed_sync_logs or instance.dashboard_webhook_pending_count:
                 instance.dashboard_status = "warning"
             else:
                 instance.dashboard_status = "ok"
@@ -970,8 +986,7 @@ class BigCommerceConnector(models.Model):
                 continue
 
             service = BigCommerceProductSyncService(instance)
-            # Manual sync should fetch full catalog. Cron/auto-sync continues to use sync_limit_product.
-            result = service.import_products(limit=None)
+            result = service.import_products(limit=instance.sync_limit_product or 100)
             instance.last_product_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
             failed_items = result.get("failed_items") or []
@@ -1051,7 +1066,7 @@ class BigCommerceConnector(models.Model):
                 continue
 
             service = BigCommerceCustomerSyncService(instance)
-            result = service.import_customers(limit=instance.sync_limit_order or 100)
+            result = service.import_customers(limit=instance.sync_limit_customer or 100)
             instance.last_customer_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
             failed_items = result.get("failed_items") or []
@@ -1113,7 +1128,7 @@ class BigCommerceConnector(models.Model):
                 continue
 
             service = BigCommerceCustomerSyncService(instance)
-            result = service.export_customers(limit=instance.sync_limit_order or 100)
+            result = service.export_customers(limit=instance.sync_limit_customer or 100)
             instance.connection_message = result.get("message")
             if result.get("success"):
                 success_count += 1
@@ -1982,7 +1997,7 @@ class BigCommerceConnector(models.Model):
         """Cron entrypoint: customer import for enabled instances."""
         for instance in self.search([("active", "=", True), ("auto_sync_customers", "=", True)]):
             try:
-                BigCommerceCustomerSyncService(instance).import_customers(limit=instance.sync_limit_order or 100)
+                BigCommerceCustomerSyncService(instance).import_customers(limit=instance.sync_limit_customer or 100)
                 self._safe_write_sync_timestamp(instance, "last_customer_sync_at")
             except Exception as err:
                 _logger.exception("Cron customer sync failed for instance_id=%s", instance.id)

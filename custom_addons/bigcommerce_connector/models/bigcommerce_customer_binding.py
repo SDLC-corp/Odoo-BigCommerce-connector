@@ -20,6 +20,11 @@ class BigCommerceCustomerBinding(models.Model):
     partner_id = fields.Many2one("res.partner", index=True, ondelete="set null")
     bigcommerce_customer_id = fields.Char(index=True)
     email = fields.Char(index=True)
+    phone = fields.Char(
+        related="partner_id.phone",
+        store=True,
+        readonly=True,
+    )
     sync_state = fields.Selection(
         selection=[
             ("draft", "Draft"),

@@ -15,6 +15,7 @@ class BigCommerceInventorySyncService:
         self.env = instance.env
         self.client = BigCommerceApiClient(instance)
         self.mapping_model = self.env["bigcommerce.field.mapping"]
+        self._bulk_inventory_cache = {"products": {}, "variants": {}, "meta": {}}
 
     def import_inventory(self, limit=100):
         """Import inventory from BigCommerce into Odoo using GET-only API calls."""
@@ -165,6 +166,8 @@ class BigCommerceInventorySyncService:
                 "failed_items": [message],
             }
 
+        self._bulk_inventory_cache = self._build_bulk_inventory_cache(bindings=bindings)
+        log_item_success = bool(getattr(self.instance, "debug_mode", False))
         updated = failed = skipped = 0
         failed_items = []
         for binding in bindings:
@@ -190,26 +193,28 @@ class BigCommerceInventorySyncService:
             message = result.get("message") or "Inventory sync processed."
             if status == "updated":
                 updated += 1
-                self._log_success(
-                    message=message,
-                    request_url=result.get("url"),
-                    request_method=result.get("method") or "GET",
-                    response_status=result.get("status_code"),
-                    response_body=result.get("response_body"),
-                    resource_remote_id=result.get("remote_id"),
-                    note=result.get("note"),
-                )
+                if log_item_success:
+                    self._log_success(
+                        message=message,
+                        request_url=result.get("url"),
+                        request_method=result.get("method") or "GET",
+                        response_status=result.get("status_code"),
+                        response_body=result.get("response_body"),
+                        resource_remote_id=result.get("remote_id"),
+                        note=result.get("note"),
+                    )
             elif status == "skipped":
                 skipped += 1
-                self._log_success(
-                    message=message,
-                    request_url=result.get("url"),
-                    request_method=result.get("method") or "GET",
-                    response_status=result.get("status_code"),
-                    response_body=result.get("response_body"),
-                    resource_remote_id=result.get("remote_id"),
-                    note=result.get("note"),
-                )
+                if log_item_success:
+                    self._log_success(
+                        message=message,
+                        request_url=result.get("url"),
+                        request_method=result.get("method") or "GET",
+                        response_status=result.get("status_code"),
+                        response_body=result.get("response_body"),
+                        resource_remote_id=result.get("remote_id"),
+                        note=result.get("note"),
+                    )
             else:
                 failed += 1
                 failed_items.append("Remote %s: %s" % (result.get("remote_id") or "N/A", message))
@@ -233,13 +238,20 @@ class BigCommerceInventorySyncService:
             "failed": failed,
             "skipped": skipped,
         }
+        cache_meta = self._bulk_inventory_cache.get("meta") or {}
+        bulk_note = "Bulk cache pages=%s api_calls=%s products_cached=%s variants_cached=%s" % (
+            cache_meta.get("pages", 0),
+            cache_meta.get("api_calls", 0),
+            cache_meta.get("products_cached", 0),
+            cache_meta.get("variants_cached", 0),
+        )
         if failed:
             self._log_failure(
                 message=summary,
-                note="First failures: %s" % " | ".join(failed_items[:3]),
+                note="%s | %s" % (bulk_note, "First failures: %s" % " | ".join(failed_items[:3])),
             )
         else:
-            self._log_success(message=summary)
+            self._log_success(message=summary, note=bulk_note)
         return {
             "success": failed == 0,
             "message": summary,
@@ -264,11 +276,12 @@ class BigCommerceInventorySyncService:
                 "note": "Missing product mapping.",
             }
 
-        remote = self._fetch_remote_inventory(remote_product_id=remote_id)
+        remote = self._resolve_remote_inventory(binding=binding)
         if not remote.get("success"):
             remote["status"] = "failed"
             remote["remote_id"] = remote_id
             return remote
+        self._refresh_template_name_from_remote(binding=binding, remote_result=remote)
         if remote.get("qty") not in (None, False):
             binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty")})
         if not remote.get("tracked", True):
@@ -326,14 +339,12 @@ class BigCommerceInventorySyncService:
                 "note": "Cannot call variant GET endpoint without parent product id.",
             }
 
-        remote = self._fetch_remote_inventory(
-            remote_product_id=remote_product_id,
-            remote_variant_id=remote_id,
-        )
+        remote = self._resolve_remote_inventory(binding=binding)
         if not remote.get("success"):
             remote["status"] = "failed"
             remote["remote_id"] = remote_id
             return remote
+        self._refresh_template_name_from_remote(binding=binding, remote_result=remote)
         if remote.get("qty") not in (None, False):
             binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty")})
         if not remote.get("tracked", True):
@@ -460,6 +471,151 @@ class BigCommerceInventorySyncService:
             "tracked": tracked,
         }
 
+    def _resolve_remote_inventory(self, binding):
+        """Resolve inventory payload from bulk cache first, fallback to direct API call."""
+        remote_variant_id = binding.bigcommerce_variant_id
+        remote_product_id = binding.bigcommerce_product_id
+
+        if remote_variant_id:
+            entry = (self._bulk_inventory_cache.get("variants") or {}).get(str(remote_variant_id))
+            if entry:
+                return dict(entry)
+            return self._fetch_remote_inventory(
+                remote_product_id=remote_product_id,
+                remote_variant_id=remote_variant_id,
+            )
+
+        if remote_product_id:
+            entry = (self._bulk_inventory_cache.get("products") or {}).get(str(remote_product_id))
+            if entry:
+                return dict(entry)
+            return self._fetch_remote_inventory(remote_product_id=remote_product_id)
+
+        return {
+            "success": False,
+            "message": "Missing BigCommerce product id for inventory fetch.",
+            "method": "GET",
+            "url": False,
+            "status_code": None,
+            "response_body": None,
+            "qty": None,
+            "tracked": False,
+        }
+
+    def _build_bulk_inventory_cache(self, bindings):
+        """Build remote inventory cache in bulk from catalog products endpoint."""
+        product_ids = {
+            str(binding.bigcommerce_product_id)
+            for binding in bindings
+            if binding.bigcommerce_product_id
+        }
+        variant_ids = {
+            str(binding.bigcommerce_variant_id)
+            for binding in bindings
+            if binding.bigcommerce_variant_id
+        }
+        cache = {"products": {}, "variants": {}, "meta": {"pages": 0, "api_calls": 0}}
+        if not product_ids and not variant_ids:
+            return cache
+
+        found_products = set()
+        found_variants = set()
+
+        for page_result in self.client.iter_paginated(
+            "/v3/catalog/products",
+            params={"include": "variants"},
+            limit=250,
+            max_pages=None,
+            data_key="data",
+        ):
+            cache["meta"]["api_calls"] += 1
+            if not page_result.get("success"):
+                break
+            cache["meta"]["pages"] += 1
+            items = page_result.get("items") or []
+            if not items:
+                break
+
+            for row in items:
+                if not isinstance(row, dict):
+                    continue
+                product_id = row.get("id")
+                product_key = str(product_id) if product_id not in (None, False, "") else False
+                if product_key and product_key in product_ids:
+                    cache["products"][product_key] = self._inventory_entry_from_payload(
+                        payload=row,
+                        is_variant=False,
+                        remote_id=product_key,
+                        url=page_result.get("url"),
+                        status_code=page_result.get("status_code"),
+                    )
+                    found_products.add(product_key)
+
+                for variant in (row.get("variants") or []):
+                    if not isinstance(variant, dict):
+                        continue
+                    variant_id = variant.get("id")
+                    variant_key = str(variant_id) if variant_id not in (None, False, "") else False
+                    if variant_key and variant_key in variant_ids:
+                        cache["variants"][variant_key] = self._inventory_entry_from_payload(
+                            payload=variant,
+                            is_variant=True,
+                            remote_id=variant_key,
+                            url=page_result.get("url"),
+                            status_code=page_result.get("status_code"),
+                        )
+                        found_variants.add(variant_key)
+
+            if (not product_ids or product_ids.issubset(found_products)) and (
+                not variant_ids or variant_ids.issubset(found_variants)
+            ):
+                break
+
+        cache["meta"]["products_cached"] = len(cache["products"])
+        cache["meta"]["variants_cached"] = len(cache["variants"])
+        return cache
+
+    def _inventory_entry_from_payload(self, payload, is_variant=False, remote_id=False, url=False, status_code=200):
+        """Normalize product/variant payload into inventory response format."""
+        if not isinstance(payload, dict):
+            return {
+                "success": False,
+                "message": "Inventory payload format is invalid.",
+                "method": "GET",
+                "url": url,
+                "status_code": status_code,
+                "response_body": None,
+                "qty": None,
+                "tracked": False,
+                "remote_id": remote_id,
+            }
+
+        tracking_raw = payload.get("inventory_tracking")
+        if is_variant and tracking_raw in (None, False, ""):
+            tracked = True
+        else:
+            tracked = str(tracking_raw or "").lower() not in ("none", "disabled", "")
+
+        raw_qty = payload.get("inventory_level")
+        qty = None
+        if raw_qty not in (None, False, ""):
+            try:
+                qty = int(float(raw_qty))
+            except (TypeError, ValueError):
+                qty = None
+
+        return {
+            "success": True,
+            "message": "Inventory fetched from bulk cache.",
+            "method": "GET",
+            "url": url,
+            "status_code": status_code,
+            "response_body": {"data": payload},
+            "qty": qty,
+            "tracked": tracked,
+            "remote_id": remote_id,
+        }
+
     def _apply_inventory_adjustment(self, product, location, target_qty):
         """Adjust Odoo stock at a location to match remote quantity."""
         if not location:
@@ -508,6 +664,40 @@ class BigCommerceInventorySyncService:
             )
             payload = self.mapping_model._merge_payload_dict(payload, mapping_payload.get("payload") or {})
         return payload
+
+    def _refresh_template_name_from_remote(self, binding, remote_result):
+        """Repair corrupted numeric template names using remote BigCommerce product name."""
+        template = binding.product_tmpl_id
+        if not template:
+            return
+
+        current_name = (template.name or "").strip()
+        if current_name and not self._is_numeric_text(current_name):
+            return
+
+        response_body = remote_result.get("response_body") or {}
+        data = response_body.get("data") if isinstance(response_body, dict) else {}
+        remote_name = (data.get("name") or "").strip() if isinstance(data, dict) else ""
+        fallback_name = (binding.bigcommerce_sku or template.default_code or "").strip()
+
+        new_name = False
+        if remote_name and not self._is_numeric_text(remote_name):
+            new_name = remote_name
+        elif fallback_name and not self._is_numeric_text(fallback_name):
+            new_name = fallback_name
+
+        if new_name:
+            template.sudo().write({"name": new_name})
+
+    def _is_numeric_text(self, value):
+        text = (value or "").strip()
+        if not text:
+            return False
+        try:
+            float(text)
+            return True
+        except (TypeError, ValueError):
+            return False
 
     def _push_inventory_update(self, binding, qty):
         """Push inventory update to BigCommerce write endpoint (export path only)."""

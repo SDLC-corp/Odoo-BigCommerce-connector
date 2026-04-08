@@ -350,6 +350,23 @@
     pointer-events: auto;
 }
 
+/* Improve Product/Inventory list readability for price/state columns. */
+.o_list_renderer .o_list_table th[data-name="default_price"],
+.o_list_renderer .o_list_table td[name="default_price"],
+.o_list_renderer .o_list_table td[data-name="default_price"] {
+    min-width: 150px !important;
+    width: 150px !important;
+    padding-right: 22px !important;
+}
+
+.o_list_renderer .o_list_table th[data-name="sync_state"],
+.o_list_renderer .o_list_table td[name="sync_state"],
+.o_list_renderer .o_list_table td[data-name="sync_state"] {
+    min-width: 140px !important;
+    width: 140px !important;
+    padding-left: 14px !important;
+}
+
 .bc-chat-panel.closed {
     transform: translateX(120%);
     opacity: 0;

@@ -5,10 +5,11 @@
             <field name="name">bigcommerce.customer.binding.list</field>
             <field name="model">bigcommerce.customer.binding</field>
             <field name="arch" type="xml">
-                <list string="Customer Bindings">
+                <list string="Customer Bindings" default_order="id asc">
                     <field name="instance_id"/>
-                    <field name="partner_id"/>
+                    <field name="partner_id" string="Name"/>
                     <field name="email"/>
+                    <field name="phone"/>
                     <field name="bigcommerce_customer_id"/>
                     <field name="sync_state"/>
                     <field name="last_synced_at"/>
@@ -27,6 +28,7 @@
                                 <field name="instance_id"/>
                                 <field name="partner_id"/>
                                 <field name="email"/>
+                                <field name="phone" readonly="1"/>
                                 <field name="sync_state"/>
                             </group>
                             <group>
@@ -51,6 +53,7 @@
                     <field name="sync_state"/>
                     <field name="partner_id"/>
                     <field name="email"/>
+                    <field name="phone"/>
                     <field name="bigcommerce_customer_id"/>
                     <filter name="filter_state_draft" string="Draft" domain="[('sync_state', '=', 'draft')]"/>
                     <filter name="filter_state_synced" string="Synced" domain="[('sync_state', '=', 'synced')]"/>

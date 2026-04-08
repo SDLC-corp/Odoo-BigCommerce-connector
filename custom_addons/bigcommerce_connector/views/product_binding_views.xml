@@ -12,12 +12,12 @@
                     <field name="bigcommerce_sku" string="SKU"/>
                     <field name="odoo_category_name" string="Categories"/>
                     <field name="current_stock" string="Current Stock"/>
-                    <field name="default_price" string="Default Price"/>
+                    <field name="default_price" string="Default Price" width="130"/>
                     <field name="calculated_price" string="Calculated Price"/>
                     <field name="channel_name" string="Channels"/>
                     <field name="visibility_label" string="Visibility"/>
                     <field name="bigcommerce_product_id"/>
-                    <field name="sync_state"/>
+                    <field name="sync_state" width="120"/>
                     <field name="last_synced_at"/>
                 </list>
             </field>
@@ -93,8 +93,8 @@
                     <field name="product_tmpl_id" string="Product"/>
                     <field name="bigcommerce_sku" string="SKU"/>
                     <field name="current_stock" string="Current Stock"/>
-                    <field name="bigcommerce_inventory_level" string="BigCommerce Stock"/>
-                    <field name="sync_state"/>
+                    <field name="default_price" string="Default Price" width="130"/>
+                    <field name="sync_state" width="120"/>
                     <field name="last_synced_at"/>
                 </list>
             </field>

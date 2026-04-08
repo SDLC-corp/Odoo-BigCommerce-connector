@@ -286,11 +286,11 @@ class BigCommerceFieldMapping(models.Model):
                 vals["odoo_model"] = self._MAPPING_MODEL_BY_TYPE.get(vals.get("mapping_type"))
 
             field_id = vals.get("bigcommerce_field_id")
-            if not vals.get("bigcommerce_field_name") and field_id:
+            if field_id:
                 bc_field = self.env["bigcommerce.field"].sudo().browse(field_id)
                 if bc_field and bc_field.exists():
                     vals["bigcommerce_field_name"] = bc_field.name
-                    vals.setdefault("bigcommerce_field_path", bc_field.name)
+                    vals["bigcommerce_field_path"] = bc_field.name
 
             selector_value = (
                 vals.get("bigcommerce_product_field")
@@ -301,11 +301,11 @@ class BigCommerceFieldMapping(models.Model):
                 vals["bigcommerce_field_name"] = selector_value
 
             field_id = vals.get("odoo_field_id")
-            if not vals.get("odoo_field_name") and field_id:
+            if field_id:
                 field_def = self.env["ir.model.fields"].sudo().browse(field_id)
                 if field_def and field_def.exists():
                     vals["odoo_field_name"] = field_def.name
-                    vals.setdefault("odoo_model", field_def.model)
+                    vals["odoo_model"] = field_def.model
             bc_name = vals.get("bigcommerce_field_name")
             bc_path = vals.get("bigcommerce_field_path")
             if bc_name and not bc_path:
@@ -333,11 +333,11 @@ class BigCommerceFieldMapping(models.Model):
             vals["odoo_model"] = self._MAPPING_MODEL_BY_TYPE.get(vals.get("mapping_type"))
 
         field_id = vals.get("bigcommerce_field_id")
-        if not vals.get("bigcommerce_field_name") and field_id:
+        if field_id:
             bc_field = self.env["bigcommerce.field"].sudo().browse(field_id)
             if bc_field and bc_field.exists():
                 vals["bigcommerce_field_name"] = bc_field.name
-                vals.setdefault("bigcommerce_field_path", bc_field.name)
+                vals["bigcommerce_field_path"] = bc_field.name
 
         selector_value = (
             vals.get("bigcommerce_product_field")
@@ -348,11 +348,11 @@ class BigCommerceFieldMapping(models.Model):
             vals["bigcommerce_field_name"] = selector_value
 
         field_id = vals.get("odoo_field_id")
-        if not vals.get("odoo_field_name") and field_id:
+        if field_id:
             field_def = self.env["ir.model.fields"].sudo().browse(field_id)
             if field_def and field_def.exists():
                 vals["odoo_field_name"] = field_def.name
-                vals.setdefault("odoo_model", field_def.model)
+                vals["odoo_model"] = field_def.model
         if vals.get("bigcommerce_field_name") and "bigcommerce_field_path" not in vals:
             vals["bigcommerce_field_path"] = vals["bigcommerce_field_name"]
         if vals.get("bigcommerce_field_path") and "bigcommerce_field_name" not in vals:
@@ -463,40 +463,9 @@ class BigCommerceFieldMapping(models.Model):
                         }
                     )
 
-            # Auto-refresh affected data to avoid stale mapped values after delete.
-            try:
-                if "product" in impacted_types:
-                    from ..services.product_sync_service import BigCommerceProductSyncService
-
-                    BigCommerceProductSyncService(
-                        connector.with_context(bigcommerce_skip_category_logs=True)
-                    ).import_products(limit=connector.sync_limit_product or 100)
-
-                if "customer" in impacted_types:
-                    from ..services.customer_sync_service import BigCommerceCustomerSyncService
-
-                    BigCommerceCustomerSyncService(connector).import_customers(
-                        limit=connector.sync_limit_order or 100
-                    )
-
-                if "order" in impacted_types:
-                    from ..services.order_sync_service import BigCommerceOrderSyncService
-
-                    BigCommerceOrderSyncService(connector).import_orders(
-                        limit=connector.sync_limit_order or 50
-                    )
-
-                if "category" in impacted_types:
-                    from ..services.category_sync_service import BigCommerceCategorySyncService
-
-                    BigCommerceCategorySyncService(connector).import_categories(limit=500)
-            except Exception as err:
-                _logger.warning(
-                    "Auto-refresh after mapping deletion failed connector_id=%s impacted_types=%s err=%s",
-                    connector.id,
-                    ",".join(sorted(impacted_types)),
-                    str(err),
-                )
+            connector.connection_message = _(
+                "Field mappings were updated. Run sync to refresh mapped data for: %s."
+            ) % ", ".join(sorted(impacted_types))
         return res
 
     def _is_bigcommerce_field_allowed(self, mapping_type, field_name):
@@ -573,12 +542,21 @@ class BigCommerceFieldMapping(models.Model):
         return True
 
     @api.model
+    def _is_missing_mapped_value(self, value):
+        """Treat only null/blank as missing; keep 0 and False as valid values."""
+        if value is None:
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        return False
+
+    @api.model
     def _coerce_for_odoo_field(self, mapping, value):
         field_def = mapping._get_odoo_field_def()
         if not field_def:
             raise ValueError("Unknown target field %s.%s" % (mapping.odoo_model, mapping.odoo_field_name))
         ttype = field_def.ttype
-        if value in (None, False, ""):
+        if self._is_missing_mapped_value(value):
             return None
         if ttype in ("char", "text", "selection"):
             return str(value).strip()
@@ -728,7 +706,7 @@ class BigCommerceFieldMapping(models.Model):
 
     @api.model
     def _transform_mapping_value(self, value, transform_type, mapping=False):
-        if value in (None, False, ""):
+        if self._is_missing_mapped_value(value):
             return None
         ttype = (transform_type or "none").strip()
         if ttype in ("none", ""):
@@ -779,9 +757,15 @@ class BigCommerceFieldMapping(models.Model):
                 field_path=source,
                 mapping_type=mapping_type,
             )
-            if raw in (None, False, "") and mapping.default_value not in (None, False, ""):
+            if self._is_missing_mapped_value(raw):
+                raw = self._derive_missing_source_value(
+                    payload=payload,
+                    mapping_type=mapping_type,
+                    source=source,
+                )
+            if self._is_missing_mapped_value(raw) and not self._is_missing_mapped_value(mapping.default_value):
                 raw = mapping.default_value
-            if raw in (None, False, ""):
+            if self._is_missing_mapped_value(raw):
                 if mapping.is_required:
                     missing.append(source)
                 skipped.append(mapping.odoo_field_name)
@@ -829,7 +813,7 @@ class BigCommerceFieldMapping(models.Model):
                     missing.append(source)
                 skipped.append(mapping.odoo_field_name)
                 continue
-            if transformed in (None, False, ""):
+            if self._is_missing_mapped_value(transformed):
                 if mapping.is_required:
                     missing.append(source)
                 skipped.append(mapping.odoo_field_name)
@@ -842,6 +826,75 @@ class BigCommerceFieldMapping(models.Model):
                 raise ValidationError(msg)
             _logger.warning("Field mapping missing required values connector_id=%s %s", connector.id, msg)
         return {"vals": vals, "applied_fields": applied, "skipped_fields": skipped, "missing_required": missing}
+
+    @api.model
+    def _derive_missing_source_value(self, payload, mapping_type, source):
+        """Derive optional fallback values for known BigCommerce payload gaps."""
+        if mapping_type != "product":
+            return None
+
+        source = (source or "").strip()
+        if not isinstance(payload, dict):
+            return None
+
+        if source in ("price", "regular_price"):
+            return self._extract_first_non_empty_product_value(
+                payload=payload,
+                direct_keys=("price", "calculated_price", "retail_price", "sale_price"),
+                variant_keys=("price", "calculated_price", "retail_price", "sale_price"),
+            )
+
+        if source == "sale_price":
+            return self._extract_first_non_empty_product_value(
+                payload=payload,
+                direct_keys=("sale_price", "price", "calculated_price", "retail_price"),
+                variant_keys=("sale_price", "price", "calculated_price", "retail_price"),
+            )
+
+        if source not in ("inventory_level", "stock_quantity"):
+            return None
+
+        variants = payload.get("variants")
+        if not isinstance(variants, list) or not variants:
+            return None
+
+        levels = []
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            value = variant.get("inventory_level")
+            if self._is_missing_mapped_value(value):
+                continue
+            try:
+                levels.append(float(value))
+            except (TypeError, ValueError):
+                continue
+        if not levels:
+            return 0.0
+        return sum(levels)
+
+    @api.model
+    def _extract_first_non_empty_product_value(self, payload, direct_keys=(), variant_keys=()):
+        payload = payload if isinstance(payload, dict) else {}
+
+        for key in direct_keys:
+            if key in payload:
+                value = payload.get(key)
+                if not self._is_missing_mapped_value(value):
+                    return value
+
+        variants = payload.get("variants")
+        if isinstance(variants, list):
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                for key in variant_keys:
+                    if key not in variant:
+                        continue
+                    value = variant.get(key)
+                    if not self._is_missing_mapped_value(value):
+                        return value
+        return None
 
     @api.model
     def _read_record_field_value(self, record, mapping):
@@ -880,7 +933,7 @@ class BigCommerceFieldMapping(models.Model):
                     current[list_index] = value
                 return
             if isinstance(current, dict):
-                if token not in current or current[token] in (None, False, ""):
+                if token not in current or self._is_path_container_value_missing(current[token]):
                     current[token] = [] if (next_token and next_token.isdigit()) else {}
                 current = current[token]
                 continue
@@ -888,11 +941,19 @@ class BigCommerceFieldMapping(models.Model):
                 list_index = int(token)
                 while len(current) <= list_index:
                     current.append({} if not (next_token and next_token.isdigit()) else [])
-                if current[list_index] in (None, False, ""):
+                if self._is_path_container_value_missing(current[list_index]):
                     current[list_index] = [] if (next_token and next_token.isdigit()) else {}
                 current = current[list_index]
                 continue
             return
+
+    @api.model
+    def _is_path_container_value_missing(self, value):
+        if value is None or value is False:
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        return False
 
     @api.model
     def _prepare_bigcommerce_payload_from_mapping(self, record, mapping_type, connector, direction="export", raise_on_required=False):
@@ -901,9 +962,9 @@ class BigCommerceFieldMapping(models.Model):
         payload, applied, skipped, missing = {}, [], [], []
         for mapping in mappings:
             value = self._read_record_field_value(record=record, mapping=mapping)
-            if value in (None, False, "") and mapping.default_value not in (None, False, ""):
+            if self._is_missing_mapped_value(value) and not self._is_missing_mapped_value(mapping.default_value):
                 value = mapping.default_value
-            if value in (None, False, ""):
+            if self._is_missing_mapped_value(value):
                 if mapping.is_required:
                     missing.append(mapping.odoo_field_name)
                 skipped.append(mapping.bigcommerce_field_name or mapping.bigcommerce_field_path)
@@ -919,7 +980,7 @@ class BigCommerceFieldMapping(models.Model):
                     missing.append(mapping.odoo_field_name)
                 skipped.append(mapping.bigcommerce_field_name or mapping.bigcommerce_field_path)
                 continue
-            if transformed in (None, False, ""):
+            if self._is_missing_mapped_value(transformed):
                 if mapping.is_required:
                     missing.append(mapping.odoo_field_name)
                 skipped.append(mapping.bigcommerce_field_name or mapping.bigcommerce_field_path)
@@ -1073,8 +1134,18 @@ class BigCommerceFieldMapping(models.Model):
         self.ensure_one()
         sample_payload = self._get_sample_payload_for_test()
         source = self.bigcommerce_field_name or self.bigcommerce_field_path
-        raw = self._extract_bigcommerce_value(sample_payload, source)
-        if raw in (None, False, "") and self.default_value not in (None, False, ""):
+        raw = self._extract_bigcommerce_value(
+            sample_payload,
+            source,
+            mapping_type=self.mapping_type,
+        )
+        if self._is_missing_mapped_value(raw):
+            raw = self._derive_missing_source_value(
+                payload=sample_payload,
+                mapping_type=self.mapping_type,
+                source=source,
+            )
+        if self._is_missing_mapped_value(raw) and not self._is_missing_mapped_value(self.default_value):
             raw = self.default_value
         transformed = self._transform_mapping_value(raw, self.transform_type or "none", mapping=self)
         wizard = self.env["bigcommerce.field.mapping.test.wizard"].create(

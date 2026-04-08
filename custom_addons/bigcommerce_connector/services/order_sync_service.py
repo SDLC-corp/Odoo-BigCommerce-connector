@@ -301,6 +301,7 @@ class BigCommerceOrderSyncService:
             )
             if customer_binding and customer_binding.partner_id:
                 partner = customer_binding.partner_id.with_env(self.env)
+                partner = self._refresh_partner_identity_from_order(partner, bc_order)
                 self._partner_by_remote_customer_cache[remote_customer_id] = partner
                 return partner
             self._partner_by_remote_customer_cache[remote_customer_id] = False
@@ -315,7 +316,7 @@ class BigCommerceOrderSyncService:
                 lambda partner: self._normalized_email(partner.email) == email
             )
             if len(exact_email_matches) == 1:
-                partner = exact_email_matches[0]
+                partner = self._refresh_partner_identity_from_order(exact_email_matches[0], bc_order)
                 self._partner_by_email_cache[email] = partner
                 if remote_customer_id:
                     binding_model = self.env["bigcommerce.customer.binding"].sudo()
@@ -379,6 +380,37 @@ class BigCommerceOrderSyncService:
         if email:
             self._partner_by_email_cache[email] = partner
 
+        return partner
+
+    def _refresh_partner_identity_from_order(self, partner, bc_order):
+        """Backfill partner name/phone from order payload when current values are placeholders."""
+        if not partner:
+            return partner
+
+        customer_name = self._customer_name_from_order(bc_order)
+        customer_phone = self._customer_phone_from_order(bc_order)
+
+        current_name = (partner.name or "").strip()
+        current_phone = (partner.phone or "").strip()
+        normalized_email = self._normalized_email(partner.email)
+        normalized_name_as_email = self._normalized_email(current_name)
+
+        vals = {}
+        if (
+            customer_name
+            and customer_name != "BigCommerce Customer"
+            and (
+                not current_name
+                or (normalized_email and normalized_name_as_email == normalized_email)
+            )
+        ):
+            vals["name"] = customer_name
+        if customer_phone and not current_phone:
+            vals["phone"] = customer_phone
+
+        if vals:
+            partner.sudo().write(vals)
+            return partner.with_env(self.env)
         return partner
 
     def _find_product_for_line(self, bc_line):
@@ -634,6 +666,8 @@ class BigCommerceOrderSyncService:
             "sale_order_id": sale_order.id,
             "bigcommerce_order_id": remote_id,
             "bigcommerce_order_number": self._order_number(bc_order) or False,
+            "bigcommerce_total_amount": self._extract_order_total(bc_order),
+            "bigcommerce_currency_code": self._extract_order_currency_code(bc_order),
             "status_on_bigcommerce": str(bc_order.get("status") or bc_order.get("status_id") or ""),
             "sync_state": "synced",
             "imported_at": now,
@@ -895,6 +929,37 @@ class BigCommerceOrderSyncService:
         if value in (None, False, ""):
             return False
         return str(value)
+
+    def _extract_order_total(self, bc_order):
+        if not isinstance(bc_order, dict):
+            return 0.0
+        total_candidates = (
+            bc_order.get("total_inc_tax"),
+            bc_order.get("total"),
+            bc_order.get("total_ex_tax"),
+            bc_order.get("subtotal_inc_tax"),
+            bc_order.get("subtotal_ex_tax"),
+            bc_order.get("subtotal"),
+        )
+        for candidate in total_candidates:
+            value = self._safe_float(candidate, default=None)
+            if value is not None:
+                return value
+        return 0.0
+
+    def _extract_order_currency_code(self, bc_order):
+        if not isinstance(bc_order, dict):
+            return False
+        candidates = (
+            bc_order.get("currency_code"),
+            bc_order.get("default_currency_code"),
+            bc_order.get("store_default_currency_code"),
+        )
+        for candidate in candidates:
+            value = (candidate or "").strip().upper()
+            if value:
+                return value
+        return False
 
     def _parse_bc_datetime(self, value):
         if not value:
