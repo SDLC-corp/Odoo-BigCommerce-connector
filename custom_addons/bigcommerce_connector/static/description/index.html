@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>BigCommerce Connector for Odoo</title>
+    <meta name="description" content="BigCommerce Connector for Odoo helps synchronize products, customers, orders, inventory, and delivery operations between BigCommerce and Odoo through practical ERP workflows."/>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6fb;
+            color: #243047;
+            line-height: 1.6;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .section {
+            padding: 48px 0;
+        }
+
+        .section-title {
+            margin: 0 0 12px;
+            font-size: 34px;
+            line-height: 1.25;
+            font-weight: 700;
+            text-align: center;
+            color: #27324a;
+        }
+
+        .section-subtitle {
+            max-width: 900px;
+            margin: 0 auto 30px;
+            text-align: center;
+            color: #5d6b82;
+            font-size: 17px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(39, 50, 74, 0.08);
+            border: 1px solid #e8edf7;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .hero-wrap {
+            background: linear-gradient(135deg, #5d3d57 0%, #714b67 45%, #2f86d9 100%);
+            color: #ffffff;
+            padding: 40px 0 56px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .hero .badge {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            color: #ffffff;
+        }
+
+        .hero h1 {
+            margin: 16px 0 16px;
+            font-size: 44px;
+            line-height: 1.14;
+            font-weight: 800;
+        }
+
+        .hero p {
+            margin: 0 0 22px;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.92);
+        }
+
+        .hero-points {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .hero-point {
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.11);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .hero-visual {
+            padding: 16px;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.16);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.14);
+        }
+
+        .hero-visual img {
+            border-radius: 16px;
+            background: #ffffff;
+        }
+
+        .intro-panel {
+            margin-top: -34px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .intro-card {
+            padding: 30px;
+        }
+
+        .intro-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+
+        .intro-box {
+            padding: 22px;
+            border-radius: 18px;
+            background: #f8fafe;
+            border: 1px solid #e8edf7;
+        }
+
+        .intro-box h3 {
+            margin: 0 0 12px;
+            font-size: 22px;
+            color: #27324a;
+        }
+
+        .intro-box p,
+        .intro-box li {
+            margin: 0;
+            color: #5d6b82;
+            font-size: 15px;
+        }
+
+        .intro-box ul {
+            padding-left: 18px;
+            margin: 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 22px 16px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7f9fe 100%);
+            border: 1px solid #e8edf7;
+        }
+
+        .stat-card h4 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            color: #714b67;
+        }
+
+        .stat-card p {
+            margin: 0;
+            font-size: 14px;
+            color: #5d6b82;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .feature-card {
+            padding: 24px;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid #e8edf7;
+            box-shadow: 0 10px 28px rgba(39, 50, 74, 0.07);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            font-size: 24px;
+            color: #ffffff;
+            background: linear-gradient(135deg, #714b67 0%, #2f86d9 100%);
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            margin: 0 0 10px;
+            font-size: 21px;
+            line-height: 1.3;
+            color: #27324a;
+        }
+
+        .feature-card p {
+            margin: 0 0 12px;
+            color: #5d6b82;
+            font-size: 15px;
+        }
+
+        .feature-card ul {
+            margin: 0;
+            padding-left: 18px;
+            color: #5d6b82;
+            font-size: 14px;
+        }
+
+        .highlight-banner {
+            padding: 34px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #203f90 0%, #714b67 100%);
+            color: #ffffff;
+        }
+
+        .highlight-banner h2 {
+            margin: 0 0 10px;
+            font-size: 30px;
+            line-height: 1.3;
+        }
+
+        .highlight-banner p {
+            margin: 0;
+            color: rgba(255,255,255,0.92);
+            font-size: 16px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .content-card {
+            padding: 26px;
+        }
+
+        .content-card h3 {
+            margin: 0 0 14px;
+            font-size: 24px;
+            color: #27324a;
+        }
+
+        .content-card p,
+        .content-card li {
+            color: #5d6b82;
+            font-size: 15px;
+        }
+
+        .content-card ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .step {
+            padding: 22px 16px;
+            border-radius: 18px;
+            text-align: center;
+            background: #ffffff;
+            border: 1px solid #e8edf7;
+            box-shadow: 0 8px 22px rgba(39, 50, 74, 0.06);
+        }
+
+        .step-number {
+            width: 42px;
+            height: 42px;
+            margin: 0 auto 12px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 700;
+            background: linear-gradient(135deg, #714b67 0%, #2f86d9 100%);
+        }
+
+        .step h4 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            color: #27324a;
+        }
+
+        .step p {
+            margin: 0;
+            font-size: 14px;
+            color: #5d6b82;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .screenshot-card {
+            overflow: hidden;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid #e8edf7;
+            box-shadow: 0 12px 28px rgba(39, 50, 74, 0.08);
+        }
+
+        .screenshot-card img {
+            width: 100%;
+        }
+
+        .screenshot-content {
+            padding: 18px 20px 22px;
+        }
+
+        .screenshot-content h4 {
+            margin: 0 0 8px;
+            font-size: 20px;
+            color: #27324a;
+        }
+
+        .screenshot-content p {
+            margin: 0;
+            font-size: 15px;
+            color: #5d6b82;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e8edf7;
+            box-shadow: 0 12px 28px rgba(39, 50, 74, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        th,
+        td {
+            padding: 16px 18px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid #edf1f8;
+            font-size: 15px;
+        }
+
+        th {
+            background: #714b67;
+            color: #ffffff;
+        }
+
+        td {
+            color: #5a6780;
+            background: #ffffff;
+        }
+
+        .faq-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .faq-item {
+            padding: 22px;
+            border-radius: 18px;
+            background: #ffffff;
+            border: 1px solid #e8edf7;
+            box-shadow: 0 10px 24px rgba(39, 50, 74, 0.06);
+        }
+
+        .faq-item h4 {
+            margin: 0 0 8px;
+            font-size: 19px;
+            color: #27324a;
+        }
+
+        .faq-item p {
+            margin: 0;
+            color: #5d6b82;
+            font-size: 15px;
+        }
+
+        .other-apps-box {
+            padding: 34px 28px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #f7f9fe 0%, #fff8fc 100%);
+            border: 1px solid #e6ebf7;
+            box-shadow: 0 12px 28px rgba(39, 50, 74, 0.08);
+        }
+
+        .other-apps-head {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .other-apps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .other-app-card {
+            background: #ffffff;
+            border: 1px solid #e8edf7;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 24px rgba(39, 50, 74, 0.06);
+        }
+
+        .other-app-card-main {
+            background: linear-gradient(135deg, #714b67 0%, #2f86d9 100%);
+            border: none;
+        }
+
+        .other-app-tag {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: #eef3ff;
+            color: #465673;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .other-app-card-main .other-app-tag {
+            background: rgba(255,255,255,0.16);
+            color: #ffffff;
+        }
+
+        .other-app-card h3 {
+            margin: 0 0 10px;
+            font-size: 22px;
+            line-height: 1.3;
+            color: #27324a;
+        }
+
+        .other-app-card p {
+            margin: 0 0 18px;
+            min-height: 96px;
+            font-size: 15px;
+            color: #5d6b82;
+        }
+
+        .other-app-card a {
+            display: inline-block;
+            padding: 11px 16px;
+            border-radius: 10px;
+            background: #f4f1f4;
+            color: #714b67;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .other-app-card-main h3,
+        .other-app-card-main p {
+            color: #ffffff;
+        }
+
+        .other-app-card-main a {
+            background: #ffffff;
+            color: #714b67;
+        }
+
+        .support-box {
+            padding: 32px;
+            text-align: center;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #eef4ff 0%, #fdf7fb 100%);
+            border: 1px solid #e3eafa;
+        }
+
+        .support-box h2 {
+            margin: 0 0 12px;
+            font-size: 30px;
+            color: #27324a;
+        }
+
+        .support-box p {
+            max-width: 860px;
+            margin: 0 auto 18px;
+            color: #5d6b82;
+            font-size: 16px;
+        }
+
+        .support-tags {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .support-tag {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #dce7fb;
+            color: #3c4a63;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .footer-note {
+            padding: 8px 0 40px;
+            text-align: center;
+            color: #7a879d;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1100px) {
+            .steps {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 991px) {
+            .hero,
+            .intro-grid,
+            .two-col,
+            .screenshot-grid,
+            .faq-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-grid,
+            .other-apps-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .section-title {
+                font-size: 30px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .section {
+                padding: 34px 0;
+            }
+
+            .hero-wrap {
+                padding: 28px 0 44px;
+            }
+
+            .intro-panel {
+                margin-top: -24px;
+            }
+
+            .intro-card,
+            .content-card,
+            .other-apps-box,
+            .support-box {
+                padding: 22px 18px;
+            }
+
+            .feature-grid,
+            .stats,
+            .steps,
+            .other-apps-grid,
+            .faq-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-points {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h1 {
+                font-size: 30px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .section-title {
+                font-size: 26px;
+            }
+
+            .section-subtitle {
+                font-size: 15px;
+            }
+
+            .highlight-banner {
+                padding: 24px 18px;
+            }
+
+            .highlight-banner h2 {
+                font-size: 24px;
+            }
+
+            .support-box h2 {
+                font-size: 24px;
+            }
+
+            .other-app-card p {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HERO -->
+    <div class="hero-wrap">
+        <div class="container">
+            <div class="hero">
+                <div>
+                    <div class="badge-row">
+                        <span class="badge">Odoo Integration</span>
+                        <span class="badge">BigCommerce Connector</span>
+                        <span class="badge">Products • Orders • Inventory</span>
+                    </div>
+
+                    <h1>BigCommerce Connector for Odoo</h1>
+
+                    <p>
+                        Connect BigCommerce with Odoo to manage products, customers, sales orders,
+                        stock updates, and delivery operations through practical, structured,
+                        and business-ready ERP workflows.
+                    </p>
+
+                    <div class="hero-points">
+                        <div class="hero-point">Import and manage product data from BigCommerce in Odoo</div>
+                        <div class="hero-point">Bring store orders into standard Odoo sales workflows</div>
+                        <div class="hero-point">Keep inventory information more consistent across systems</div>
+                        <div class="hero-point">Process fulfillment in Odoo and update shipment activity</div>
+                    </div>
+                </div>
+
+                <div class="hero-visual">
+                    <img src="banner.png" alt="BigCommerce Connector for Odoo banner">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="container intro-panel">
+        <div class="card intro-card">
+            <div class="intro-grid">
+                <div class="intro-box">
+                    <h3>What this module does</h3>
+                    <p>
+                        This connector helps businesses operate BigCommerce and Odoo together without
+                        handling the same business data repeatedly in separate systems. It supports
+                        product handling, customer flow, order import, inventory updates, and
+                        delivery-related processes from a centralized Odoo environment.
+                    </p>
+                </div>
+
+                <div class="intro-box">
+                    <h3>Why businesses use it</h3>
+                    <ul>
+                        <li>Centralize eCommerce operations inside Odoo</li>
+                        <li>Reduce manual product, order, and stock handling effort</li>
+                        <li>Improve consistency between store and ERP data</li>
+                        <li>Use controlled manual and scheduled synchronization processes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h4>Products</h4>
+                    <p>Catalog import and update workflows</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Orders</h4>
+                    <p>Store order import into Odoo sales flow</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Inventory</h4>
+                    <p>Stock synchronization between systems</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Delivery</h4>
+                    <p>Shipment and fulfillment update flow</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Core Functional Capabilities</h2>
+            <p class="section-subtitle">
+                The connector is designed around real business operations so teams can manage
+                BigCommerce activity in Odoo with better visibility and cleaner process handling.
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Product Synchronization</h3>
+                    <p>Manage product-related data between BigCommerce and Odoo with cleaner catalog workflows.</p>
+                    <ul>
+                        <li>Import products into Odoo</li>
+                        <li>Update product details from store changes</li>
+                        <li>Support variant-based product structures where configured</li>
+                        <li>Handle category-related mapping processes</li>
+                        <li>Maintain catalog consistency across systems</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛒</div>
+                    <h3>Order Management</h3>
+                    <p>Bring BigCommerce orders into Odoo and continue sales and back-office processing in one place.</p>
+                    <ul>
+                        <li>Import store orders into Odoo</li>
+                        <li>Create or relate customers during order flow</li>
+                        <li>Map order details for Odoo processing</li>
+                        <li>Reduce repeated manual order entry</li>
+                        <li>Keep store and ERP records more aligned</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Inventory Synchronization</h3>
+                    <p>Use stock-related synchronization to improve inventory control between BigCommerce and Odoo.</p>
+                    <ul>
+                        <li>Update stock data from Odoo operations</li>
+                        <li>Support configured inventory sync rules</li>
+                        <li>Improve product availability consistency</li>
+                        <li>Reduce stock mismatch from manual handling</li>
+                        <li>Use scheduled stock update workflows</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🚚</div>
+                    <h3>Delivery and Shipment Flow</h3>
+                    <p>Process deliveries in Odoo and synchronize shipment-related activity back to the store workflow.</p>
+                    <ul>
+                        <li>Manage deliveries using Odoo operations</li>
+                        <li>Update shipment details to BigCommerce</li>
+                        <li>Support tracking-related information flow</li>
+                        <li>Help align fulfillment status between systems</li>
+                        <li>Improve visibility for shipped orders</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">👤</div>
+                    <h3>Customer Data Handling</h3>
+                    <p>Keep customer-related information available in Odoo for order processing and sales management.</p>
+                    <ul>
+                        <li>Import customer details from BigCommerce orders</li>
+                        <li>Create customer records for operational use</li>
+                        <li>Map store customer data to Odoo structure</li>
+                        <li>Reduce duplicate manual entry work</li>
+                        <li>Support cleaner customer and order linkage</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⏱</div>
+                    <h3>Controlled Synchronization</h3>
+                    <p>Use manual actions and scheduled jobs for controlled and maintainable integration handling.</p>
+                    <ul>
+                        <li>Manual sync for controlled execution</li>
+                        <li>Scheduled jobs for recurring operations</li>
+                        <li>Configuration-driven process behavior</li>
+                        <li>Useful for operational review before execution</li>
+                        <li>Designed for maintainable business workflows</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIGHLIGHT -->
+    <div class="section">
+        <div class="container">
+            <div class="highlight-banner card">
+                <h2>Built for practical business workflows, not just basic data transfer</h2>
+                <p>
+                    This connector is positioned as an operational bridge between BigCommerce and Odoo,
+                    helping teams manage products, customers, orders, inventory, and fulfillment
+                    through organized ERP-driven workflows.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIVE PREVIEW / GET STARTED -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Live Preview and Getting Started</h2>
+            <p class="section-subtitle">
+                Buyers usually want to understand setup flow quickly. This section makes the module easier to evaluate before deployment.
+            </p>
+
+            <div class="two-col">
+                <div class="card content-card">
+                    <h3>Live preview access</h3>
+                    <ul>
+                        <li>Review module screens before deployment</li>
+                        <li>Understand the interface structure and settings flow</li>
+                        <li>Check how product, order, and inventory operations are managed</li>
+                        <li>See connector menus and synchronization forms</li>
+                    </ul>
+                </div>
+
+                <div class="card content-card">
+                    <h3>Getting started flow</h3>
+                    <ul>
+                        <li>Configure instance and store connection details</li>
+                        <li>Map required operational settings</li>
+                        <li>Import base data such as products or customers</li>
+                        <li>Test order import and stock update flow</li>
+                        <li>Enable scheduled jobs after initial validation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIGURATION FLOW -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Connection and Configuration Overview</h2>
+            <p class="section-subtitle">
+                Setup clarity improves trust. This section shows the connector as a simple, step-based operational flow.
+            </p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h4>Create Instance</h4>
+                    <p>Set up the BigCommerce connection inside Odoo using connector configuration.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h4>Validate Settings</h4>
+                    <p>Configure operational parameters required for import and update workflows.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h4>Import Base Data</h4>
+                    <p>Bring products, customers, or related store data into Odoo as needed.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h4>Process Orders</h4>
+                    <p>Import store orders and continue business operations inside Odoo.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <h4>Sync Updates</h4>
+                    <p>Update stock, delivery, or operational status based on configured flows.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREENSHOTS -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Application Screens</h2>
+            <p class="section-subtitle">
+                Replace the sample images below with your real module screenshots from the instance, product, order, inventory, customer, and delivery flows.
+            </p>
+
+            <div class="screenshot-grid">
+                <div class="screenshot-card">
+                    <img src="screen_instance.png" alt="BigCommerce instance configuration in Odoo">
+                    <div class="screenshot-content">
+                        <h4>Instance Configuration</h4>
+                        <p>Define the BigCommerce connection and manage store-specific settings from Odoo.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <img src="screen_product_sync.png" alt="BigCommerce product synchronization in Odoo">
+                    <div class="screenshot-content">
+                        <h4>Product Synchronization</h4>
+                        <p>Review product import and update actions through catalog-related synchronization flows.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <img src="screen_order_import.png" alt="BigCommerce order import in Odoo">
+                    <div class="screenshot-content">
+                        <h4>Order Import Workflow</h4>
+                        <p>Import BigCommerce orders and continue sales processing using standard Odoo operations.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <img src="screen_inventory.png" alt="Inventory synchronization between BigCommerce and Odoo">
+                    <div class="screenshot-content">
+                        <h4>Inventory Update Flow</h4>
+                        <p>Use Odoo inventory operations to keep stock-related information aligned with the store.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <img src="screen_customer.png" alt="Customer synchronization from BigCommerce to Odoo">
+                    <div class="screenshot-content">
+                        <h4>Customer Data Handling</h4>
+                        <p>Manage customer creation or mapping for cleaner order processing and record linkage.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <img src="screen_delivery.png" alt="Delivery and shipment update flow from Odoo to BigCommerce">
+                    <div class="screenshot-content">
+                        <h4>Delivery and Shipment Updates</h4>
+                        <p>Process fulfillment in Odoo and handle shipment-related synchronization where configured.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SYNC SCOPE -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Synchronization Scope</h2>
+            <p class="section-subtitle">
+                This matrix helps buyers understand what the connector covers and how operational areas are typically handled.
+            </p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operational Area</th>
+                            <th>Typical Flow</th>
+                            <th>Purpose</th>
+                            <th>Execution Style</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Products</td>
+                            <td>BigCommerce to Odoo and update-oriented workflows</td>
+                            <td>Maintain catalog availability inside ERP operations</td>
+                            <td>Manual and/or scheduled based on configuration</td>
+                        </tr>
+                        <tr>
+                            <td>Orders</td>
+                            <td>BigCommerce to Odoo</td>
+                            <td>Create sales processing flow in Odoo</td>
+                            <td>Manual and/or scheduled based on configuration</td>
+                        </tr>
+                        <tr>
+                            <td>Customers</td>
+                            <td>Store customer data to Odoo operational records</td>
+                            <td>Support order linkage and customer record creation</td>
+                            <td>Order-driven or configured flow</td>
+                        </tr>
+                        <tr>
+                            <td>Inventory</td>
+                            <td>Odoo stock changes to store update flow</td>
+                            <td>Reduce stock mismatch between systems</td>
+                            <td>Manual and/or scheduled based on configuration</td>
+                        </tr>
+                        <tr>
+                            <td>Delivery / Shipment</td>
+                            <td>Odoo fulfillment flow to store status update</td>
+                            <td>Keep shipping-related information aligned</td>
+                            <td>Action-based flow depending on setup</td>
+                        </tr>
+                        <tr>
+                            <td>Configuration</td>
+                            <td>Odoo-managed connector settings</td>
+                            <td>Control operational behavior and sync rules</td>
+                            <td>Admin configuration</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- WHY PRACTICAL -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">What Makes This Connector Practical</h2>
+            <p class="section-subtitle">
+                Clear operational value matters more than generic marketing lines. This section explains the business use more directly.
+            </p>
+
+            <div class="two-col">
+                <div class="card content-card">
+                    <h3>Operational clarity</h3>
+                    <ul>
+                        <li>Organized around business workflows instead of vague automation claims</li>
+                        <li>Supports controlled execution for teams that need visibility</li>
+                        <li>Fits common Odoo operational handling patterns</li>
+                        <li>Helps reduce duplicated system work</li>
+                        <li>Structured for easier process adoption inside teams</li>
+                    </ul>
+                </div>
+
+                <div class="card content-card">
+                    <h3>Business readiness</h3>
+                    <ul>
+                        <li>Suitable for product, order, stock, and shipment-related operations</li>
+                        <li>Designed to centralize commerce activity into Odoo</li>
+                        <li>Useful for teams working with ERP-managed fulfillment</li>
+                        <li>Supports process consistency across store and back office</li>
+                        <li>Helps maintain cleaner transactional visibility</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section">
+        <div class="container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-subtitle">
+                Answering common buyer questions improves clarity and reduces hesitation before purchase.
+            </p>
+
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h4>Does the module support product synchronization?</h4>
+                    <p>
+                        Yes. The page presents the connector as supporting product-related import and update workflows.
+                        Keep only the exact product operations your module currently supports.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Can BigCommerce orders be managed in Odoo?</h4>
+                    <p>
+                        Yes. The module is positioned for importing store orders into Odoo so they can be processed
+                        through the workflow configured in your system.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Does it help with inventory synchronization?</h4>
+                    <p>
+                        Yes. Stock-related updates can be handled through the connector flow so inventory information
+                        stays more consistent across BigCommerce and Odoo.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Can shipment or delivery information be updated?</h4>
+                    <p>
+                        Yes, where implemented in the module workflow. Shipment-related updates should be described
+                        only according to the exact behavior your connector supports.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Is manual control available for synchronization?</h4>
+                    <p>
+                        The page design assumes the connector supports manual actions and scheduled jobs,
+                        depending on your implemented features.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Can this fit standard Odoo usage?</h4>
+                    <p>
+                        Yes. The content is written to present the connector as aligned with practical Odoo processes
+                        rather than as a disconnected external utility.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MORE APPS -->
+    <div class="section">
+        <div class="container">
+            <div class="other-apps-box">
+                <div class="other-apps-head">
+                    <h2 class="section-title" style="margin-bottom:8px;">Explore More Apps by SDLC Corp</h2>
+                    <p class="section-subtitle" style="margin-bottom:0;">
+                        Discover additional Odoo modules developed by SDLC Corp for integrations,
+                        communication, security, and business operations.
+                    </p>
+                </div>
+
+                <div class="other-apps-grid">
+                    <div class="other-app-card">
+                        <div class="other-app-tag">Security</div>
+                        <h3>IP Access Control</h3>
+                        <p>
+                            Control Odoo access using per-user IP restrictions with request-level
+                            protection and access management workflows.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/19.0/sdlc_ip_restriction" target="_blank">View App</a>
+                    </div>
+
+                    <div class="other-app-card">
+                        <div class="other-app-tag">Communication</div>
+                        <h3>WhatsApp Messenger</h3>
+                        <p>
+                            Send WhatsApp messages with document support directly from Odoo workflows
+                            such as Sales Orders and Invoices.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/19.0/whatsapp_messenger" target="_blank">View App</a>
+                    </div>
+
+                    <div class="other-app-card">
+                        <div class="other-app-tag">eCommerce</div>
+                        <h3>PrestaShop Connector</h3>
+                        <p>
+                            Connect PrestaShop with Odoo for catalog, customer, inventory, and order
+                            synchronization workflows.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/19.0/sdlc_prestashop_connector" target="_blank">View App</a>
+                    </div>
+
+                    <div class="other-app-card">
+                        <div class="other-app-tag">Operations</div>
+                        <h3>Asset Management</h3>
+                        <p>
+                            Manage the asset lifecycle with depreciation, maintenance, transfers,
+                            and operational visibility inside Odoo.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/19.0/sdlc_asset_management" target="_blank">View App</a>
+                    </div>
+
+                    <div class="other-app-card">
+                        <div class="other-app-tag">Industry</div>
+                        <h3>Construction Management</h3>
+                        <p>
+                            Handle construction planning, BOQ, budgets, work orders, subcontracting,
+                            billing, and execution workflows in Odoo.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/19.0/sdlc_construction_management" target="_blank">View App</a>
+                    </div>
+
+                    <div class="other-app-card other-app-card-main">
+                        <div class="other-app-tag">Publisher</div>
+                        <h3>More Apps by SDLC Corp</h3>
+                        <p>
+                            Browse additional published Odoo modules from SDLC Corp and explore more
+                            solutions for integrations, automation, and business process improvement.
+                        </p>
+                        <a href="https://apps.odoo.com/apps/modules/browse?search=sdlc%20corp" target="_blank">See More Our Odoo Apps</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUPPORT -->
+    <div class="section">
+        <div class="container">
+            <div class="support-box card">
+                <h2>Support and Onboarding</h2>
+                <p>
+                    Use this section to help buyers understand that installation, configuration,
+                    first-run validation, and operational clarification are available when needed.
+                    Keep the wording factual and aligned with the support you actually provide.
+                </p>
+
+                <div class="support-tags">
+                    <span class="support-tag">Installation guidance</span>
+                    <span class="support-tag">Configuration support</span>
+                    <span class="support-tag">Operational clarification</span>
+                    <span class="support-tag">First sync validation</span>
+                    <span class="support-tag">Issue troubleshooting</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER NOTE -->
+    <div class="container">
+        <div class="footer-note">
+            Replace placeholder screenshots and remove any feature line that does not exactly match your module behavior.
+        </div>
+    </div>
+
+</body>
+</html>
