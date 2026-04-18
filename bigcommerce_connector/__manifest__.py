@@ -41,6 +41,9 @@
             "bigcommerce_connector/static/src/css/bigcommerce_dashboard.css",
         ],
     },
+    "price": 1,
+    "currency": "USD",
+    "images": ["static/description/banner.png"],
     "installable": True,
     "application": True,
 }
