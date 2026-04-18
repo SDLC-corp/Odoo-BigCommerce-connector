@@ -36,9 +36,9 @@
     ],
     "assets": {
         "web.assets_backend": [
-            "bigcommerce_connector/static/src/xml/bigcommerce_dashboard_templates.xml",
-            "bigcommerce_connector/static/src/js/bigcommerce_dashboard.js",
-            "bigcommerce_connector/static/src/css/bigcommerce_dashboard.css",
+            "bigcommerce_connector_sdlc/static/src/xml/bigcommerce_dashboard_templates.xml",
+            "bigcommerce_connector_sdlc/static/src/js/bigcommerce_dashboard.js",
+            "bigcommerce_connector_sdlc/static/src/css/bigcommerce_dashboard.css",
         ],
     },
     "price": 1,

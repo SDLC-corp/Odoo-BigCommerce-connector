@@ -5,7 +5,7 @@
             id="menu_bigcommerce_root"
             name="BigCommerce"
             sequence="35"
-            action="bigcommerce_connector.action_bigcommerce_connector"
+            action="bigcommerce_connector_sdlc.action_bigcommerce_connector"
             groups="base.group_user"
             web_icon="base,static/description/icon.png"
         />
@@ -13,9 +13,9 @@
         <menuitem
             id="menu_bigcommerce_connectors"
             name="Connectors"
-            parent="bigcommerce_connector.menu_bigcommerce_root"
+            parent="bigcommerce_connector_sdlc.menu_bigcommerce_root"
             sequence="10"
-            action="bigcommerce_connector.action_bigcommerce_connector"
+            action="bigcommerce_connector_sdlc.action_bigcommerce_connector"
             groups="base.group_user"
         />
     </data>

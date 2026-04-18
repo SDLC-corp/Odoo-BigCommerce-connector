@@ -32,13 +32,13 @@
                             string="Mark Success"
                             type="object"
                             class="oe_highlight"
-                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
                         />
                         <button
                             name="action_mark_failed"
                             string="Mark Failed"
                             type="object"
-                            groups="bigcommerce_connector.group_bigcommerce_manager"
+                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
                         />
                         <field name="status" widget="statusbar" statusbar_visible="draft,success,failed,skipped"/>
                     </header>
