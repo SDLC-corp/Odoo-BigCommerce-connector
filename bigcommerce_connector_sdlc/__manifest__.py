@@ -41,7 +41,7 @@
             "bigcommerce_connector_sdlc/static/src/css/bigcommerce_dashboard.css",
         ],
     },
-    "price": 1,
+    "price": 10,
     "currency": "USD",
     "images": ["static/description/banner.png"],
     "installable": True,
