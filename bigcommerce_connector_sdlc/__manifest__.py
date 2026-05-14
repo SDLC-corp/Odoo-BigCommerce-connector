@@ -3,10 +3,14 @@
     "name": "BigCommerce Connector",
     "summary": "Base framework for BigCommerce integration",
     "version": "18.0.2.0.0",
-    "author": "Your Company",
-    "website": "https://www.example.com",
     "category": "Sales",
-    "license": "LGPL-3",
+    'author': 'SDLC Corp',
+    'maintainer': 'SDLC Corp',
+    'website': 'https://sdlccorp.com/',
+    'support': 'sales@sdlccorp.com',
+    'license': 'OPL-1',
+    'price': 10.00,
+    'currency': 'USD',
     "depends": [
         "base",
         "product",
@@ -46,4 +50,5 @@
     "images": ["static/description/banner.png"],
     "installable": True,
     "application": True,
+    'auto_install': False,
 }
