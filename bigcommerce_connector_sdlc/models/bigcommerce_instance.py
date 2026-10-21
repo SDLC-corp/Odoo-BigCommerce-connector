@@ -223,7 +223,7 @@ class BigCommerceConnector(models.Model):
         store_hash = self._normalize_store_hash_value(store_hash)
         if not store_hash:
             return False
-        base_url = (self.env["ir.config_parameter"].sudo().get_param("web.base.url") or "").strip()
+        base_url = (self.env["ir.config_parameter"].sudo().get_str("web.base.url") or "").strip()
         if not base_url:
             return False
         return "%s/bigcommerce/webhook?store_hash=%s" % (base_url.rstrip("/"), store_hash)
@@ -508,7 +508,7 @@ class BigCommerceConnector(models.Model):
         if (self.webhook_callback_url or "").strip():
             return (self.webhook_callback_url or "").strip()
 
-        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        base_url = self.env["ir.config_parameter"].sudo().get_str("web.base.url")
         if not (base_url or "").strip():
             return False
         return "%s/bigcommerce/webhook?store_hash=%s" % (

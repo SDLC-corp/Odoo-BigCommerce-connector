@@ -6,6 +6,9 @@ from datetime import datetime, time, timedelta
 from odoo import api, fields, models
 
 from ..services.gemini_chat_service import GeminiChatService
+import babel.dates
+from odoo.models import READ_GROUP_DISPLAY_FORMAT
+from odoo.tools.misc import get_lang
 
 _logger = logging.getLogger(__name__)
 
@@ -131,12 +134,12 @@ class BigCommerceDashboard(models.AbstractModel):
             if company_ids:
                 quant_domain.append(("company_id", "in", company_ids))
 
-            quant_groups = self.env["stock.quant"].read_group(
-                quant_domain,
-                ["product_id", "quantity:sum", "reserved_quantity:sum"],
-                ["product_id"],
-                lazy=False,
-            )
+            quant_groups = [
+                {"product_id": (product.id, product.sudo().display_name) if product else False,
+                 "quantity": quantity, "reserved_quantity": reserved}
+                for product, quantity, reserved in self.env["stock.quant"]._read_group(
+                    quant_domain, ["product_id"], ["quantity:sum", "reserved_quantity:sum"])
+            ]
             qty_map = {}
             for group in quant_groups:
                 product_info = group.get("product_id")
@@ -191,13 +194,11 @@ class BigCommerceDashboard(models.AbstractModel):
             ("display_type", "=", False),
             ("product_id", "!=", False),
         ]
-        groups = self.env["sale.order.line"].read_group(
-            line_domain,
-            ["product_id", "product_uom_qty:sum"],
-            ["product_id"],
-            limit=8,
-            orderby="product_uom_qty desc",
-        )
+        groups = [
+            {"product_id": (product.id, product.sudo().display_name) if product else False, "product_uom_qty": qty}
+            for product, qty in self.env["sale.order.line"]._read_group(
+                line_domain, ["product_id"], ["product_uom_qty:sum"], limit=8, order="product_uom_qty:sum desc")
+        ]
 
         items = []
         product_ids = [group["product_id"][0] for group in groups if group.get("product_id")]
@@ -679,11 +680,11 @@ class BigCommerceDashboard(models.AbstractModel):
             for log in recent_logs
         ]
 
-        sync_groups = self.env["bigcommerce.sync.log"].read_group(
-            sync_log_domain + [("status", "in", ("success", "failed"))],
-            ["status"],
-            ["status"],
-        )
+        sync_groups = [
+            {"status": status, "status_count": count}
+            for status, count in self.env["bigcommerce.sync.log"]._read_group(
+                sync_log_domain + [("status", "in", ("success", "failed"))], ["status"], ["__count"])
+        ]
         success_count = sum(group.get("status_count", 0) for group in sync_groups if group.get("status") == "success")
         failed_count = sum(group.get("status_count", 0) for group in sync_groups if group.get("status") == "failed")
         total_done = success_count + failed_count
@@ -790,12 +791,16 @@ class BigCommerceDashboard(models.AbstractModel):
             "stale_instances": stale_instances,
         }
 
-        day_groups = self.env["bigcommerce.sync.log"].read_group(
-            sync_log_domain + [("status", "in", ("success", "failed"))],
-            ["status"],
-            ["create_date:day", "status"],
-            orderby="create_date:day asc",
-        )
+        # Same rows as the former lazy read_group: one per day (labelled like "21 Oct 2026"),
+        # no per-status split.
+        locale = get_lang(self.env).code
+        day_groups = [
+            {"create_date:day": babel.dates.format_date(day, READ_GROUP_DISPLAY_FORMAT["day"], locale=locale),
+             "create_date_count": count}
+            for day, count in self.env["bigcommerce.sync.log"]._read_group(
+                sync_log_domain + [("status", "in", ("success", "failed"))], ["create_date:day"], ["__count"],
+                order="create_date:day asc")
+        ]
         trend_map = {}
         for group in day_groups:
             date_key = group.get("create_date:day")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    "version": "19.0.2.0.0",
+    "version": "20.0.2.0.0",
     "name": "BigCommerce Connector for Odoo",
     "summary": "Connect your BigCommerce store with Odoo ERP. Sync products, orders, inventory, and customers in real time.",
     "description": """
@@ -68,7 +68,7 @@
     ],
     "data": [
         "security/security.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "data/bigcommerce_cron_data.xml",
         "views/bigcommerce_dashboard_action.xml",
         "views/bigcommerce_connector_views.xml",

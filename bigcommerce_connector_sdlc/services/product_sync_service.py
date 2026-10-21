@@ -418,7 +418,7 @@ class BigCommerceProductSyncService:
         try:
             response = requests.get(url, timeout=15)
             if response.status_code == 200:
-                return base64.b64encode(response.content)
+                return base64.b64encode(response.content).decode()
         except requests.RequestException:
             return False
         return False

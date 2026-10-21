@@ -1,13 +1,17 @@
 import { registry } from "@web/core/registry";
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount, proxy, useProps } from "@odoo/owl";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 import { rpc } from "@web/core/network/rpc";
 
 export class BigCommerceDashboard extends Component {
+    static template = "bigcommerce_dashboard_template";
+    props = useProps({ ...standardActionServiceProps });
+
     setup() {
         this._dashboardRequestSeq = 0;
         this._quickActionRequestSeq = 0;
         this._autoRefreshTimer = null;
-        this.state = useState({
+        this.state = proxy({
             loading: false,
             rangeDays: "7",
             instanceId: "all",
@@ -269,5 +273,4 @@ export class BigCommerceDashboard extends Component {
     }
 }
 
-BigCommerceDashboard.template = "bigcommerce_dashboard_template";
 registry.category("actions").add("bigcommerce_dashboard", BigCommerceDashboard);
