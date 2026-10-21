@@ -101,7 +101,7 @@
                     <filter name="filter_status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
                     <filter name="filter_status_skipped" string="Skipped" domain="[('status', '=', 'skipped')]"/>
                     <separator/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_trigger_source" string="Trigger Source" context="{'group_by': 'trigger_source'}"/>
                         <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>

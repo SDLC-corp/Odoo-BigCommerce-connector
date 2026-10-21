@@ -75,7 +75,7 @@
                     <filter name="filter_state_synced" string="Synced" domain="[('sync_state', '=', 'synced')]"/>
                     <filter name="filter_state_error" string="Error" domain="[('sync_state', '=', 'error')]"/>
                     <separator/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_state" string="Sync State" context="{'group_by': 'sync_state'}"/>
                         <filter name="group_by_template" string="Template" context="{'group_by': 'product_tmpl_id'}"/>

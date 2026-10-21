@@ -34,15 +34,11 @@ class BigCommerceWebhookSubscription(models.Model):
     )
     error_message = fields.Text()
 
-    _sql_constraints = [
-        (
-            "bigcommerce_webhook_subscription_remote_uniq",
-            "unique(instance_id, remote_webhook_id)",
-            "Webhook remote id must be unique per connector instance.",
-        ),
-        (
-            "bigcommerce_webhook_subscription_scope_dest_uniq",
-            "unique(instance_id, scope, destination)",
-            "Webhook scope/destination must be unique per connector instance.",
-        ),
-    ]
+    _bigcommerce_webhook_subscription_remote_uniq = models.Constraint(
+        "unique(instance_id, remote_webhook_id)",
+        "Webhook remote id must be unique per connector instance.",
+    )
+    _bigcommerce_webhook_subscription_scope_dest_uniq = models.Constraint(
+        "unique(instance_id, scope, destination)",
+        "Webhook scope/destination must be unique per connector instance.",
+    )

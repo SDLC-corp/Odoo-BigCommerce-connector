@@ -126,7 +126,7 @@
                     <filter name="filter_status_done" string="Done" domain="[('status', '=', 'done')]"/>
                     <filter name="filter_status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
                     <separator/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
                         <filter name="group_by_phase" string="Phase" context="{'group_by': 'phase'}"/>
@@ -208,7 +208,7 @@
                     <filter name="filter_deleted" string="Deleted" domain="[('status', '=', 'deleted')]"/>
                     <filter name="filter_error" string="Error" domain="[('status', '=', 'error')]"/>
                     <separator/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
                         <filter name="group_by_scope" string="Scope" context="{'group_by': 'scope'}"/>

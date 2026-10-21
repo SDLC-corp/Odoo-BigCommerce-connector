@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import api, fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 
 
 class BigCommerceProductBinding(models.Model):
@@ -51,13 +51,10 @@ class BigCommerceProductBinding(models.Model):
         search="_search_search_term",
     )
 
-    _sql_constraints = [
-        (
-            "bigcommerce_product_binding_variant_uniq",
-            "unique(instance_id, bigcommerce_variant_id)",
-            "BigCommerce variant id must be unique per instance.",
-        )
-    ]
+    _bigcommerce_product_binding_variant_uniq = models.Constraint(
+        "unique(instance_id, bigcommerce_variant_id)",
+        "BigCommerce variant id must be unique per instance.",
+    )
 
     def name_get(self):
         result = []
@@ -154,7 +151,7 @@ class BigCommerceProductBinding(models.Model):
             return []
         if operator not in ("=", "!=", "ilike", "like", "=like", "=ilike", "not ilike", "not like"):
             operator = "ilike"
-        return expression.OR(
+        return Domain.OR(
             [
                 [("bigcommerce_sku", operator, value)],
                 [("bigcommerce_variant_id", operator, value)],
@@ -171,7 +168,7 @@ class BigCommerceProductBinding(models.Model):
     def _name_search(self, name="", args=None, operator="ilike", limit=100, order=None):
         args = list(args or [])
         if name:
-            search_domain = expression.OR(
+            search_domain = Domain.OR(
                 [
                     [("bigcommerce_sku", operator, name)],
                     [("bigcommerce_variant_id", operator, name)],
@@ -183,7 +180,7 @@ class BigCommerceProductBinding(models.Model):
                     [("instance_id.name", operator, name)],
                 ]
             )
-            args = expression.AND([args, search_domain])
+            args = Domain.AND([args, search_domain])
         return self._search(args, limit=limit, order=order)
 
     @api.onchange("product_id")

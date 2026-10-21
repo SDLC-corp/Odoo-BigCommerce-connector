@@ -38,10 +38,7 @@ class BigCommerceCustomerBinding(models.Model):
     last_synced_at = fields.Datetime(index=True)
     last_error = fields.Text()
 
-    _sql_constraints = [
-        (
-            "bigcommerce_customer_binding_customer_uniq",
-            "unique(instance_id, bigcommerce_customer_id)",
-            "BigCommerce customer id must be unique per instance.",
-        )
-    ]
+    _bigcommerce_customer_binding_customer_uniq = models.Constraint(
+        "unique(instance_id, bigcommerce_customer_id)",
+        "BigCommerce customer id must be unique per instance.",
+    )

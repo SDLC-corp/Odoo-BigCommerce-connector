@@ -110,15 +110,11 @@ class BigCommerceOrderBinding(models.Model):
             else:
                 rec.bigcommerce_total_display = "%.2f" % amount
 
-    _sql_constraints = [
-        (
-            "bigcommerce_order_binding_order_uniq",
-            "unique(instance_id, bigcommerce_order_id)",
-            "BigCommerce order id must be unique per instance.",
-        ),
-        (
-            "bigcommerce_order_binding_sale_order_uniq",
-            "unique(instance_id, sale_order_id)",
-            "Only one BigCommerce order binding is allowed per sale order and instance.",
-        )
-    ]
+    _bigcommerce_order_binding_order_uniq = models.Constraint(
+        "unique(instance_id, bigcommerce_order_id)",
+        "BigCommerce order id must be unique per instance.",
+    )
+    _bigcommerce_order_binding_sale_order_uniq = models.Constraint(
+        "unique(instance_id, sale_order_id)",
+        "Only one BigCommerce order binding is allowed per sale order and instance.",
+    )

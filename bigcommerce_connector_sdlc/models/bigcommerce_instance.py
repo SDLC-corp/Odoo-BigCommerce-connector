@@ -168,13 +168,10 @@ class BigCommerceConnector(models.Model):
         string="Field Mappings",
     )
 
-    _sql_constraints = [
-        (
-            "bigcommerce_instance_company_store_hash_uniq",
-            "unique(company_id, store_hash)",
-            "Store hash must be unique per company.",
-        )
-    ]
+    _bigcommerce_instance_company_store_hash_uniq = models.Constraint(
+        "unique(company_id, store_hash)",
+        "Store hash must be unique per company.",
+    )
 
     @staticmethod
     def _normalize_store_hash_value(value):

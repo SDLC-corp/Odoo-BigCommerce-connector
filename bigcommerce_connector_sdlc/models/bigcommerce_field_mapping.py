@@ -29,13 +29,10 @@ class BigCommerceField(models.Model):
     name = fields.Char(required=True, index=True)
     active = fields.Boolean(default=True, index=True)
 
-    _sql_constraints = [
-        (
-            "bigcommerce_field_catalog_uniq",
-            "unique(connector_id, mapping_type, name)",
-            "BigCommerce field must be unique per connector and mapping type.",
-        )
-    ]
+    _bigcommerce_field_catalog_uniq = models.Constraint(
+        "unique(connector_id, mapping_type, name)",
+        "BigCommerce field must be unique per connector and mapping type.",
+    )
 
 
 class BigCommerceFieldMapping(models.Model):
@@ -161,11 +158,10 @@ class BigCommerceFieldMapping(models.Model):
                     rec._ensure_bigcommerce_fields_catalog()
         return super().read(fields=fields, load=load)
 
-    _sql_constraints = [
-        ("bigcommerce_field_mapping_unique_rule",
-         "unique(connector_id, mapping_type, direction, odoo_field_name, bigcommerce_field_name)",
-         "Duplicate mapping rule for this connector/type/direction is not allowed.")
-    ]
+    _bigcommerce_field_mapping_unique_rule = models.Constraint(
+        "unique(connector_id, mapping_type, direction, odoo_field_name, bigcommerce_field_name)",
+        "Duplicate mapping rule for this connector/type/direction is not allowed.",
+    )
 
     @api.model
     def _selection_bigcommerce_fields(self):

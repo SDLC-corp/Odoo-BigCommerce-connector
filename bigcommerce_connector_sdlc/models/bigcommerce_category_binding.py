@@ -34,15 +34,11 @@ class BigCommerceCategoryBinding(models.Model):
     last_synced_at = fields.Datetime(index=True)
     last_error = fields.Text()
 
-    _sql_constraints = [
-        (
-            "bigcommerce_category_binding_bc_uniq",
-            "unique(instance_id, bigcommerce_category_id)",
-            "BigCommerce category id must be unique per instance.",
-        ),
-        (
-            "bigcommerce_category_binding_odoo_uniq",
-            "unique(instance_id, category_id)",
-            "Odoo category must be unique per instance.",
-        ),
-    ]
+    _bigcommerce_category_binding_bc_uniq = models.Constraint(
+        "unique(instance_id, bigcommerce_category_id)",
+        "BigCommerce category id must be unique per instance.",
+    )
+    _bigcommerce_category_binding_odoo_uniq = models.Constraint(
+        "unique(instance_id, category_id)",
+        "Odoo category must be unique per instance.",
+    )

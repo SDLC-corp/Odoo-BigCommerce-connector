@@ -71,7 +71,7 @@
                     <filter name="filter_state_error" string="Error" domain="[('sync_state', '=', 'error')]"/>
                     <filter name="filter_missing_sale_order" string="Missing Sale Order" domain="[('sale_order_id', '=', False)]"/>
                     <separator/>
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_state" string="Sync State" context="{'group_by': 'sync_state'}"/>
                         <filter name="group_by_status" string="BC Status" context="{'group_by': 'status_on_bigcommerce'}"/>

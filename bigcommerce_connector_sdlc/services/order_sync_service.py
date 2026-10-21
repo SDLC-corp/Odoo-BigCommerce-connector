@@ -577,7 +577,7 @@ class BigCommerceOrderSyncService:
             "name": line_name,
             "product_uom_qty": quantity,
             "price_unit": price_unit,
-            "product_uom": product.uom_id.id,
+            "product_uom_id": product.uom_id.id,
         }
         mapping_result = self.mapping_model._prepare_odoo_vals_from_mapping(
             payload=bc_line,
@@ -838,7 +838,7 @@ class BigCommerceOrderSyncService:
                 "name": "Shipping",
                 "product_uom_qty": 1.0,
                 "price_unit": shipping_amount,
-                "product_uom": shipping_product.uom_id.id,
+                "product_uom_id": shipping_product.uom_id.id,
             }
         )
 
@@ -859,7 +859,7 @@ class BigCommerceOrderSyncService:
                 "name": "Discount",
                 "product_uom_qty": 1.0,
                 "price_unit": -abs(discount_amount),
-                "product_uom": discount_product.uom_id.id,
+                "product_uom_id": discount_product.uom_id.id,
             }
         )
 
