@@ -120,8 +120,8 @@ class BigCommerceProductBinding(models.Model):
                     scoped_product = scoped_product.with_context(
                         location=rec.instance_id.warehouse_id.lot_stock_id.id
                     )
-                is_storable = bool(getattr(product, "is_storable", False))
-                if (product.type != "service") and (is_storable or product.type == "consu"):
+                # Odoo 17 goods: storable products are type "product", consumables "consu".
+                if product.type in ("consu", "product"):
                     if "free_qty" in scoped_product._fields:
                         stock_value = float(scoped_product.free_qty or 0.0)
                     else:

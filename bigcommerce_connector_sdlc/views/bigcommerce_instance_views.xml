@@ -5,7 +5,7 @@
             <field name="name">bigcommerce.instance.tree</field>
             <field name="model">bigcommerce.instance</field>
             <field name="arch" type="xml">
-                <list string="BigCommerce Instances" default_order="name">
+                <tree string="BigCommerce Instances" default_order="name">
                     <field name="name"/>
                     <field name="company_id"/>
                     <field name="store_hash"/>
@@ -13,7 +13,7 @@
                     <field name="state"/>
                     <field name="last_order_sync_at"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 

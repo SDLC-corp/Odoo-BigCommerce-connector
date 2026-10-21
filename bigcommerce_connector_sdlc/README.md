@@ -1,6 +1,6 @@
 # BigCommerce Connector
 
-Production-oriented base scaffold for an Odoo 18 addon that will host BigCommerce integration components.
+Production-oriented base scaffold for an Odoo 17 addon that will host BigCommerce integration components.
 
 ## Current Scope
 

@@ -5,7 +5,7 @@
             <field name="name">bigcommerce.webhook.event.list</field>
             <field name="model">bigcommerce.webhook.event</field>
             <field name="arch" type="xml">
-                <list
+                <tree
                     string="Webhook Events"
                     default_order="received_at desc,id desc"
                     decoration-danger="status == 'failed'"
@@ -37,7 +37,7 @@
                     <field name="retry_count"/>
                     <field name="processed_at"/>
                     <field name="error_message" optional="hide"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -140,7 +140,7 @@
         <record id="action_bigcommerce_webhook_event" model="ir.actions.act_window">
             <field name="name">Webhook Events</field>
             <field name="res_model">bigcommerce.webhook.event</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_webhook_event_search"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">No webhook events received yet.</p>
@@ -155,7 +155,7 @@
             <field name="name">bigcommerce.webhook.subscription.list</field>
             <field name="model">bigcommerce.webhook.subscription</field>
             <field name="arch" type="xml">
-                <list string="Webhook Subscriptions">
+                <tree string="Webhook Subscriptions">
                     <field name="instance_id"/>
                     <field name="scope"/>
                     <field name="remote_webhook_id"/>
@@ -163,7 +163,7 @@
                     <field name="is_active"/>
                     <field name="status"/>
                     <field name="last_sync_at"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -220,7 +220,7 @@
         <record id="action_bigcommerce_webhook_subscription" model="ir.actions.act_window">
             <field name="name">Webhook Subscriptions</field>
             <field name="res_model">bigcommerce.webhook.subscription</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_webhook_subscription_search"/>
         </record>
     </data>

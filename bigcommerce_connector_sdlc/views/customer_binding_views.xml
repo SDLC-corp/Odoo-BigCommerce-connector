@@ -5,7 +5,7 @@
             <field name="name">bigcommerce.customer.binding.list</field>
             <field name="model">bigcommerce.customer.binding</field>
             <field name="arch" type="xml">
-                <list string="Customer Bindings" default_order="id asc">
+                <tree string="Customer Bindings" default_order="id asc">
                     <field name="instance_id"/>
                     <field name="partner_id" string="Name"/>
                     <field name="email"/>
@@ -13,7 +13,7 @@
                     <field name="bigcommerce_customer_id"/>
                     <field name="sync_state"/>
                     <field name="last_synced_at"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -71,7 +71,7 @@
         <record id="action_bigcommerce_customer_binding" model="ir.actions.act_window">
             <field name="name">Customer Bindings</field>
             <field name="res_model">bigcommerce.customer.binding</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_customer_binding_search"/>
         </record>
     </data>

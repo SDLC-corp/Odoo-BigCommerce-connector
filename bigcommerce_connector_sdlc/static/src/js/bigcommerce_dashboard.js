@@ -1,9 +1,12 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
-import { rpc } from "@web/core/network/rpc";
+import { useService } from "@web/core/utils/hooks";
 
 export class BigCommerceDashboard extends Component {
     setup() {
+        this.rpc = useService("rpc");
         this._dashboardRequestSeq = 0;
         this._quickActionRequestSeq = 0;
         this._autoRefreshTimer = null;
@@ -46,7 +49,7 @@ export class BigCommerceDashboard extends Component {
     }
 
     async loadInstances() {
-        const result = await rpc("/web/dataset/call_kw", {
+        const result = await this.rpc("/web/dataset/call_kw", {
             model: "bigcommerce.dashboard",
             method: "get_instances",
             args: [],
@@ -59,7 +62,7 @@ export class BigCommerceDashboard extends Component {
         const requestSeq = ++this._dashboardRequestSeq;
         this.state.loading = true;
         try {
-            const result = await rpc("/web/dataset/call_kw", {
+            const result = await this.rpc("/web/dataset/call_kw", {
                 model: "bigcommerce.dashboard",
                 method: "get_dashboard_data",
                 args: [],
@@ -80,7 +83,7 @@ export class BigCommerceDashboard extends Component {
 
     async loadQuickActions() {
         const requestSeq = ++this._quickActionRequestSeq;
-        const result = await rpc("/web/dataset/call_kw", {
+        const result = await this.rpc("/web/dataset/call_kw", {
             model: "bigcommerce.dashboard",
             method: "get_chat_quick_actions",
             args: [],
@@ -200,7 +203,7 @@ export class BigCommerceDashboard extends Component {
                 role: item.role,
                 content: item.content,
             }));
-            const result = await rpc("/web/dataset/call_kw", {
+            const result = await this.rpc("/web/dataset/call_kw", {
                 model: "bigcommerce.dashboard",
                 method: "ask_ai_assistant",
                 args: [],

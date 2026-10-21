@@ -5,7 +5,7 @@
             <field name="name">bigcommerce.sync.log.list</field>
             <field name="model">bigcommerce.sync.log</field>
             <field name="arch" type="xml">
-                <list string="Sync Logs">
+                <tree string="Sync Logs">
                     <field name="create_date"/>
                     <field name="instance_id"/>
                     <field name="trigger_source"/>
@@ -17,7 +17,7 @@
                     <field name="retry_count"/>
                     <field name="duration_ms"/>
                     <field name="status"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -124,14 +124,14 @@
         <record id="action_bigcommerce_sync_log" model="ir.actions.act_window">
             <field name="name">Sync Logs</field>
             <field name="res_model">bigcommerce.sync.log</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
         </record>
 
         <record id="action_bigcommerce_inventory_sync_log" model="ir.actions.act_window">
             <field name="name">Inventory Logs</field>
             <field name="res_model">bigcommerce.sync.log</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
             <field name="domain">[('operation_type', 'in', ['inventory_import', 'inventory_export'])]</field>
             <field name="context">{'search_default_filter_status_failed': 0}</field>

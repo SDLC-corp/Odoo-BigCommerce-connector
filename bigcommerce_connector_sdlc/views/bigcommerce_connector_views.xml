@@ -5,7 +5,7 @@
             <field name="name">bigcommerce.connector.tree</field>
             <field name="model">bigcommerce.connector</field>
             <field name="arch" type="xml">
-                <list string="BigCommerce Connectors" default_order="name">
+                <tree string="BigCommerce Connectors" default_order="name">
                     <field name="name"/>
                     <field name="company_id"/>
                     <field name="store_hash"/>
@@ -13,7 +13,7 @@
                     <field name="state"/>
                     <field name="last_order_sync_at"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -267,7 +267,7 @@
                                     />
                                 </group>
                                 <field name="mapping_ids" context="{'default_connector_id': id}">
-                                    <list string="Field Mappings" default_order="mapping_type,id">
+                                    <tree string="Field Mappings" default_order="mapping_type,id">
                                         <field name="active"/>
                                         <field name="mapping_type"/>
                                         <field name="direction"/>
@@ -275,7 +275,7 @@
                                         <field name="bigcommerce_field_id"/>
                                         <field name="is_required"/>
                                         <field name="default_value"/>
-                                    </list>
+                                    </tree>
                                     <form string="Field Mapping Rule">
                                         <header>
                                             <button name="action_load_bigcommerce_fields" type="object" string="Load BigCommerce Fields"/>
@@ -323,7 +323,7 @@
         <record id="action_bigcommerce_connector" model="ir.actions.act_window">
             <field name="name">Connectors</field>
             <field name="res_model">bigcommerce.connector</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create your first BigCommerce connector.

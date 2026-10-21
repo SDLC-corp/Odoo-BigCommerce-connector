@@ -70,12 +70,12 @@
             <field name="name">bigcommerce.field.mapping.list.product</field>
             <field name="model">bigcommerce.field.mapping</field>
             <field name="arch" type="xml">
-                <list string="Product Field Mappings" default_order="connector_id,id">
+                <tree string="Product Field Mappings" default_order="connector_id,id">
                     <field name="connector_id"/>
                     <field name="odoo_field_id"/>
                     <field name="bigcommerce_field_id"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -83,12 +83,12 @@
             <field name="name">bigcommerce.field.mapping.list.customer</field>
             <field name="model">bigcommerce.field.mapping</field>
             <field name="arch" type="xml">
-                <list string="Customer Field Mappings" default_order="connector_id,id">
+                <tree string="Customer Field Mappings" default_order="connector_id,id">
                     <field name="connector_id"/>
                     <field name="odoo_field_id"/>
                     <field name="bigcommerce_field_id"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -96,12 +96,12 @@
             <field name="name">bigcommerce.field.mapping.list.order</field>
             <field name="model">bigcommerce.field.mapping</field>
             <field name="arch" type="xml">
-                <list string="Order Field Mappings" default_order="connector_id,id">
+                <tree string="Order Field Mappings" default_order="connector_id,id">
                     <field name="connector_id"/>
                     <field name="odoo_field_id"/>
                     <field name="bigcommerce_field_id"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -109,12 +109,12 @@
             <field name="name">bigcommerce.field.mapping.list.category</field>
             <field name="model">bigcommerce.field.mapping</field>
             <field name="arch" type="xml">
-                <list string="Category Field Mappings" default_order="connector_id,id">
+                <tree string="Category Field Mappings" default_order="connector_id,id">
                     <field name="connector_id"/>
                     <field name="odoo_field_id"/>
                     <field name="bigcommerce_field_id"/>
                     <field name="active"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -137,14 +137,14 @@
         <record id="action_bigcommerce_field_mapping" model="ir.actions.act_window">
             <field name="name">Field Mappings</field>
             <field name="res_model">bigcommerce.field.mapping</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_bigcommerce_field_mapping_search"/>
         </record>
 
         <record id="action_bigcommerce_field_mapping_product" model="ir.actions.act_window">
             <field name="name">Product Field Mapping</field>
             <field name="res_model">bigcommerce.field.mapping</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="view_id" ref="view_bigcommerce_field_mapping_list_product"/>
             <field name="domain">[('mapping_type', '=', 'product')]</field>
             <field name="context">{'default_mapping_type': 'product', 'default_direction': 'import'}</field>
@@ -154,7 +154,7 @@
         <record id="action_bigcommerce_field_mapping_customer" model="ir.actions.act_window">
             <field name="name">Customer Field Mapping</field>
             <field name="res_model">bigcommerce.field.mapping</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="view_id" ref="view_bigcommerce_field_mapping_list_customer"/>
             <field name="domain">[('mapping_type', '=', 'customer')]</field>
             <field name="context">{'default_mapping_type': 'customer', 'default_direction': 'import'}</field>
@@ -164,7 +164,7 @@
         <record id="action_bigcommerce_field_mapping_order" model="ir.actions.act_window">
             <field name="name">Order Field Mapping</field>
             <field name="res_model">bigcommerce.field.mapping</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="view_id" ref="view_bigcommerce_field_mapping_list_order"/>
             <field name="domain">[('mapping_type', '=', 'order')]</field>
             <field name="context">{'default_mapping_type': 'order', 'default_direction': 'import'}</field>
@@ -174,7 +174,7 @@
         <record id="action_bigcommerce_field_mapping_category" model="ir.actions.act_window">
             <field name="name">Category Field Mapping</field>
             <field name="res_model">bigcommerce.field.mapping</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="view_id" ref="view_bigcommerce_field_mapping_list_category"/>
             <field name="domain">[('mapping_type', '=', 'category')]</field>
             <field name="context">{'default_mapping_type': 'category', 'default_direction': 'import'}</field>
