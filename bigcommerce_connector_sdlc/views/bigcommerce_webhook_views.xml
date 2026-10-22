@@ -59,7 +59,7 @@
                             string="Retry"
                             type="object"
                             groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                            invisible="status != 'failed'"
+                            attrs="{'invisible': [('status', '!=', 'failed')]}"
                         />
                         <field name="status" widget="statusbar" statusbar_visible="pending,processing,done,failed"/>
                     </header>

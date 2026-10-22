@@ -168,7 +168,7 @@ class BigCommerceProductBinding(models.Model):
         )
 
     @api.model
-    def _name_search(self, name="", args=None, operator="ilike", limit=100, order=None):
+    def _name_search(self, name="", args=None, operator="ilike", limit=100, name_get_uid=None, order=None):
         args = list(args or [])
         if name:
             search_domain = expression.OR(
@@ -184,7 +184,8 @@ class BigCommerceProductBinding(models.Model):
                 ]
             )
             args = expression.AND([args, search_domain])
-        return self._search(args, limit=limit, order=order)
+        # Odoo 16 passes name_get_uid (17: order); keep both and apply the 16 access-rights user.
+        return self._search(args, limit=limit, order=order, access_rights_uid=name_get_uid)
 
     @api.onchange("product_id")
     def _onchange_product_id(self):

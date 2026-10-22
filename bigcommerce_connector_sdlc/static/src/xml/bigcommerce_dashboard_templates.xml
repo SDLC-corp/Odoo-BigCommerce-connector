@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="bigcommerce_dashboard_template">
+    <t t-name="bigcommerce_dashboard_template" owl="1">
         <div class="o_bc_dashboard">
             <button class="bc-chat-fab" type="button" t-on-click="toggleChat">
                 <span class="bc-chat-fab-icon">AI</span>

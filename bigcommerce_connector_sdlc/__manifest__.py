@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    "version": "17.0.2.0.0",
+    "version": "16.0.2.0.0",
     "name": "BigCommerce Connector for Odoo",
     "summary": "Connect your BigCommerce store with Odoo ERP. Sync products, orders, inventory, and customers in real time.",
     "description": """
