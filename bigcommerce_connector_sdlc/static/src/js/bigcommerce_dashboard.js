@@ -1,8 +1,11 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+
+// Odoo 15 web client runs Owl 1: no @odoo/owl module; hooks live in owl.hooks.
+const { Component } = owl;
+const { onMounted, onWillUnmount, useState } = owl.hooks;
 
 export class BigCommerceDashboard extends Component {
     setup() {

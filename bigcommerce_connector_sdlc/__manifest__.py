@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    "version": "16.0.2.0.0",
+    "version": "15.0.2.0.0",
     "name": "BigCommerce Connector for Odoo",
     "summary": "Connect your BigCommerce store with Odoo ERP. Sync products, orders, inventory, and customers in real time.",
     "description": """
@@ -85,9 +85,12 @@
     ],
     "assets": {
         "web.assets_backend": [
-            "bigcommerce_connector_sdlc/static/src/xml/bigcommerce_dashboard_templates.xml",
             "bigcommerce_connector_sdlc/static/src/js/bigcommerce_dashboard.js",
             "bigcommerce_connector_sdlc/static/src/css/bigcommerce_dashboard.css",
+        ],
+        # Odoo 15 loads Owl templates from web.assets_qweb.
+        "web.assets_qweb": [
+            "bigcommerce_connector_sdlc/static/src/xml/bigcommerce_dashboard_templates.xml",
         ],
     },
     "images": ["static/description/banner.gif"],

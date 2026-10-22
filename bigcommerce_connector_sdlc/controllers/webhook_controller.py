@@ -6,10 +6,19 @@ import hmac
 
 from odoo import http
 from odoo.http import request
+from odoo.tools import date_utils
 
 from ..services.webhook_service import BigCommerceWebhookService
 
 _logger = logging.getLogger(__name__)
+
+
+def _json_response(data, status=200):
+    """Odoo 15 has no request.make_json_response (16+): same JSON body, header and status."""
+    body = json.dumps(data, ensure_ascii=False, default=date_utils.json_default)
+    response = request.make_response(body, headers=[("Content-Type", "application/json; charset=utf-8")])
+    response.status_code = status
+    return response
 
 
 class BigCommerceWebhookController(http.Controller):
@@ -32,13 +41,13 @@ class BigCommerceWebhookController(http.Controller):
             payload = json.loads(raw_body)
             if not isinstance(payload, dict):
                 _logger.warning("BigCommerce webhook rejected: payload JSON is not an object.")
-                return request.make_json_response(
+                return _json_response(
                     {"success": False, "message": "Malformed payload. JSON object required."},
                     status=400,
                 )
         except ValueError:
             _logger.warning("BigCommerce webhook rejected: malformed JSON body.")
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Malformed JSON payload."},
                 status=400,
             )
@@ -48,7 +57,7 @@ class BigCommerceWebhookController(http.Controller):
             store_hash = kwargs.get("store_hash")
         if not store_hash:
             _logger.warning("BigCommerce webhook rejected: missing store hash.")
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Missing store hash."},
                 status=400,
             )
@@ -60,7 +69,7 @@ class BigCommerceWebhookController(http.Controller):
         )
         if not instance:
             _logger.warning("BigCommerce webhook rejected: unknown store hash '%s'.", store_hash)
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Unknown store hash."},
                 status=404,
             )
@@ -75,7 +84,7 @@ class BigCommerceWebhookController(http.Controller):
                 message="Webhooks are disabled for this connector.",
                 destination=request.httprequest.url,
             )
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Webhooks are disabled for this connector."},
                 status=503,
             )
@@ -90,7 +99,7 @@ class BigCommerceWebhookController(http.Controller):
                 message="Webhook secret is not configured.",
                 destination=request.httprequest.url,
             )
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Webhook secret is not configured."},
                 status=503,
             )
@@ -105,7 +114,7 @@ class BigCommerceWebhookController(http.Controller):
                 message="Invalid webhook secret.",
                 destination=request.httprequest.url,
             )
-            return request.make_json_response(
+            return _json_response(
                 {"success": False, "message": "Invalid webhook secret."},
                 status=401,
             )
@@ -118,7 +127,7 @@ class BigCommerceWebhookController(http.Controller):
             destination=request.httprequest.url,
         )
         status_code = 200 if result.get("success") else 400
-        return request.make_json_response(result, status=status_code)
+        return _json_response(result, status=status_code)
 
     def _get_header(self, headers, name):
         if name in headers:

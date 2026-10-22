@@ -537,9 +537,20 @@ class BigCommerceFieldMapping(models.Model):
             return False
         if field_def.model == "sale.order" and field_def.name == "state":
             return True
-        if direction in ("import", "both") and field_def.readonly:
+        if direction in ("import", "both") and field_def.readonly and not self._is_state_writable(field_def):
             return False
         return True
+
+    @api.model
+    def _is_state_writable(self, field_def):
+        """Odoo 15 declares draft-editable fields as readonly=True with states granting
+        ('readonly', False) (e.g. sale.order.date_order); 16+ declares the same fields
+        readonly=False. Treat them as writable, as on 16+."""
+        if field_def.model not in self.env:
+            return False
+        field = self.env[field_def.model]._fields.get(field_def.name)
+        states = getattr(field, "states", None) or {}
+        return any(("readonly", False) in modifiers for modifiers in states.values())
 
     @api.model
     def _is_missing_mapped_value(self, value):
