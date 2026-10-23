@@ -105,7 +105,8 @@ class BigCommerceDashboard(models.AbstractModel):
             bindings = self.env["bigcommerce.product.binding"].search(binding_domain + [("product_id", "!=", False)])
             bound_product_ids = list(set(bindings.mapped("product_id").ids))
 
-            product_domain = [("type", "=", "product"), ("active", "=", True)]
+            # Odoo 18+ has no "product" type any more: storable goods are consu + is_storable.
+            product_domain = [("is_storable", "=", True), ("active", "=", True)]
             company_ids = self.env.companies.ids
             if company_ids:
                 product_domain.append(("company_id", "in", [False] + company_ids))
@@ -790,11 +791,14 @@ class BigCommerceDashboard(models.AbstractModel):
             "stale_instances": stale_instances,
         }
 
+        # lazy=False: one row per (day, status) with its "__count"; a lazy read_group
+        # groups by the day only and drops "status", so every trend bar stayed 0.
         day_groups = self.env["bigcommerce.sync.log"].read_group(
             sync_log_domain + [("status", "in", ("success", "failed"))],
             ["status"],
             ["create_date:day", "status"],
             orderby="create_date:day asc",
+            lazy=False,
         )
         trend_map = {}
         for group in day_groups:
@@ -806,11 +810,12 @@ class BigCommerceDashboard(models.AbstractModel):
                 {"date": str(date_key), "success": 0, "failed": 0},
             )
             if group.get("status") == "success":
-                bucket["success"] = group.get("status_count", 0)
+                bucket["success"] = group.get("__count", 0)
             if group.get("status") == "failed":
-                bucket["failed"] = group.get("status_count", 0)
+                bucket["failed"] = group.get("__count", 0)
 
-        trends = sorted(trend_map.values(), key=lambda row: row["date"])
+        # Rows arrive in day order; the labels ("21 Oct 2026") do not sort chronologically.
+        trends = list(trend_map.values())
 
         return {
             "filters": {
