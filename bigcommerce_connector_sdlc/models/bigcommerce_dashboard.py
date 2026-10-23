@@ -108,7 +108,8 @@ class BigCommerceDashboard(models.AbstractModel):
             bindings = self.env["bigcommerce.product.binding"].search(binding_domain + [("product_id", "!=", False)])
             bound_product_ids = list(set(bindings.mapped("product_id").ids))
 
-            product_domain = [("type", "=", "product"), ("active", "=", True)]
+            # Odoo 18+ has no "product" type any more: storable goods are consu + is_storable.
+            product_domain = [("is_storable", "=", True), ("active", "=", True)]
             company_ids = self.env.companies.ids
             if company_ids:
                 product_domain.append(("company_id", "in", [False] + company_ids))
@@ -791,14 +792,14 @@ class BigCommerceDashboard(models.AbstractModel):
             "stale_instances": stale_instances,
         }
 
-        # Same rows as the former lazy read_group: one per day (labelled like "21 Oct 2026"),
-        # no per-status split.
+        # One row per (day, status): grouping by the day alone dropped the status, so every
+        # trend bar stayed 0. Days keep the read_group labels ("21 Oct 2026").
         locale = get_lang(self.env).code
         day_groups = [
             {"create_date:day": babel.dates.format_date(day, READ_GROUP_DISPLAY_FORMAT["day"], locale=locale),
-             "create_date_count": count}
-            for day, count in self.env["bigcommerce.sync.log"]._read_group(
-                sync_log_domain + [("status", "in", ("success", "failed"))], ["create_date:day"], ["__count"],
+             "status": status, "__count": count}
+            for day, status, count in self.env["bigcommerce.sync.log"]._read_group(
+                sync_log_domain + [("status", "in", ("success", "failed"))], ["create_date:day", "status"], ["__count"],
                 order="create_date:day asc")
         ]
         trend_map = {}
@@ -811,11 +812,12 @@ class BigCommerceDashboard(models.AbstractModel):
                 {"date": str(date_key), "success": 0, "failed": 0},
             )
             if group.get("status") == "success":
-                bucket["success"] = group.get("status_count", 0)
+                bucket["success"] = group.get("__count", 0)
             if group.get("status") == "failed":
-                bucket["failed"] = group.get("status_count", 0)
+                bucket["failed"] = group.get("__count", 0)
 
-        trends = sorted(trend_map.values(), key=lambda row: row["date"])
+        # Rows arrive in day order; the labels ("21 Oct 2026") do not sort chronologically.
+        trends = list(trend_map.values())
 
         return {
             "filters": {
