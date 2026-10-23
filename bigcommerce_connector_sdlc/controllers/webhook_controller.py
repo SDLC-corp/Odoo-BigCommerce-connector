@@ -21,6 +21,23 @@ def _json_response(data, status=200):
     return response
 
 
+# Odoo 15 turns every application/json request into a JSON-RPC request and then refuses it
+# on type="http" routes (400 before the handler runs); 16+ dispatches on the route type.
+# BigCommerce posts its webhooks as application/json, so this one path keeps a plain HTTP
+# request (raw body, the controller's own JSON responses and status codes), as on 16+.
+_WEBHOOK_PATH = "/bigcommerce/webhook"
+if not getattr(http.Root.get_request, "_bigcommerce_webhook_http", False):
+    _root_get_request = http.Root.get_request
+
+    def _get_request(self, httprequest):
+        if httprequest.path == _WEBHOOK_PATH:
+            return http.HttpRequest(httprequest)
+        return _root_get_request(self, httprequest)
+
+    _get_request._bigcommerce_webhook_http = True
+    http.Root.get_request = _get_request
+
+
 class BigCommerceWebhookController(http.Controller):
     """Public webhook controller for BigCommerce inbound events."""
 
