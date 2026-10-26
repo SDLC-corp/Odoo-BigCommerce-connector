@@ -696,7 +696,7 @@ class BigCommerceConnector(models.Model):
                 "bigcommerce_field_name": "status",
                 "direction": "import",
                 "transform_type": "selection",
-                "selection_map_json": "{\"awaiting_fulfillment\": \"sale\", \"completed\": \"sale\", \"cancelled\": \"cancel\"}",
+                "selection_map_json": "{\"Awaiting Fulfillment\": \"sale\", \"Awaiting Shipment\": \"sale\", \"Awaiting Pickup\": \"sale\", \"Partially Shipped\": \"sale\", \"Shipped\": \"sale\", \"Completed\": \"sale\", \"Partially Refunded\": \"sale\", \"Cancelled\": \"cancel\", \"Declined\": \"cancel\", \"Pending\": \"draft\", \"Awaiting Payment\": \"draft\", \"Incomplete\": \"draft\", \"Manual Verification Required\": \"draft\", \"Refunded\": \"draft\", \"Disputed\": \"draft\"}",
                 "is_required": False,
             },
         ]

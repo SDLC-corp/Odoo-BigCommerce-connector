@@ -98,8 +98,11 @@ class BigCommerceOrderSyncService:
         for batch in self._iter_batches(orders, batch_size):
             for bc_order in batch:
                 try:
-                    sale_order, was_created = self._create_or_update_sale_order(bc_order)
-                    self._create_or_update_binding(sale_order, bc_order)
+                    # One savepoint per order: an order that fails (e.g. while being confirmed)
+                    # leaves nothing half-imported behind.
+                    with self.env.cr.savepoint():
+                        sale_order, was_created = self._create_or_update_sale_order(bc_order)
+                        self._create_or_update_binding(sale_order, bc_order)
                     if was_created:
                         created += 1
                     else:
@@ -590,7 +593,13 @@ class BigCommerceOrderSyncService:
         return vals
 
     def _create_or_update_sale_order(self, bc_order):
-        """Create or update sale.order in draft state and fully refresh order lines."""
+        """Create or update the sale order of a BigCommerce order, then follow its status.
+
+        Quotations (draft/sent) are fully refreshed (header and lines), then brought to the
+        state the BigCommerce status maps to (see _apply_bigcommerce_state). A confirmed or
+        cancelled order keeps its lines: a later sync only follows the status (e.g. a
+        cancellation) instead of failing.
+        """
         remote_id = self._as_remote_id(bc_order)
         if not remote_id:
             raise ValueError("BigCommerce order id is missing in response payload.")
@@ -598,29 +607,27 @@ class BigCommerceOrderSyncService:
         binding = self._find_existing_order_binding(bc_order)
         partner = self._find_or_create_customer(bc_order)
         sale_order_vals = self._prepare_sale_order_vals(bc_order, partner)
+        # The status mapping gives the target state; it is reached through the sale workflow.
+        target_state = sale_order_vals.pop("state", False)
         order_number = self._order_number(bc_order)
 
         was_created = False
         if binding and binding.sale_order_id:
             sale_order = binding.sale_order_id.with_env(self.env)
-            if sale_order.state not in ("draft", "sent"):
-                raise ValueError(
-                    "Sale order %s is in state '%s' and cannot be updated by sync."
-                    % (sale_order.name, sale_order.state)
-                )
-            sale_order.write(sale_order_vals)
         else:
             sale_order = self._find_existing_sale_order(order_number)
-            if sale_order:
-                if sale_order.state not in ("draft", "sent"):
-                    raise ValueError(
-                        "Sale order %s is in state '%s' and cannot be updated by sync."
-                        % (sale_order.name, sale_order.state)
-                    )
-                sale_order.write(sale_order_vals)
-            else:
-                sale_order = self.env["sale.order"].create(sale_order_vals)
-                was_created = True
+        if sale_order and sale_order.state not in ("draft", "sent"):
+            _logger.info(
+                "BigCommerce order %s: sale order %s is %s, lines not refreshed; following status %r.",
+                remote_id, sale_order.name, sale_order.state, bc_order.get("status"),
+            )
+            self._apply_bigcommerce_state(sale_order, target_state)
+            return sale_order, False
+        if sale_order:
+            sale_order.write(sale_order_vals)
+        else:
+            sale_order = self.env["sale.order"].create(sale_order_vals)
+            was_created = True
 
         lines_result = self._fetch_order_products(remote_id)
         if not lines_result.get("success"):
@@ -651,8 +658,25 @@ class BigCommerceOrderSyncService:
 
         self._add_shipping_line(sale_order, bc_order)
         self._add_discount_line(sale_order, bc_order)
+        self._apply_bigcommerce_state(sale_order, target_state, order_date=sale_order_vals.get("date_order"))
 
         return sale_order, was_created
+
+    def _apply_bigcommerce_state(self, sale_order, target_state, order_date=False):
+        """Bring the sale order to the state its BigCommerce status maps to.
+
+        Only "sale" (action_confirm) and "cancel" (action_cancel) are applied; any other
+        target, e.g. "draft" for orders still awaiting payment, changes nothing, and a
+        confirmed order is never moved back to a quotation. Cancelling a locked order raises
+        Odoo's UserError, which fails this order's sync with that message.
+        """
+        if target_state == "sale" and sale_order.state in ("draft", "sent"):
+            sale_order.action_confirm()
+            if order_date:
+                # action_confirm() stamps the confirmation time; keep the BigCommerce order date.
+                sale_order.write({"date_order": order_date})
+        elif target_state == "cancel" and sale_order.state in ("draft", "sent", "sale"):
+            sale_order.with_context(disable_cancel_warning=True).action_cancel()
 
     def _create_or_update_binding(self, sale_order, bc_order):
         """Create or update BigCommerce order binding for a sale order."""
