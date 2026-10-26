@@ -211,7 +211,9 @@ class BigCommerceProductSyncService:
         if bc_product_type == "digital":
             vals["type"] = "service"
         elif bc_product_type in ("", "physical"):
-            vals["type"] = "consu"
+            # Physical goods are stocked: storable ("product"), or the inventory level sync
+            # cannot create quants. type follows detailed_type on this version.
+            vals["detailed_type"] = "product"
         if sku:
             vals["default_code"] = sku
         if bc_product.get("description"):
@@ -498,7 +500,9 @@ class BigCommerceProductSyncService:
                 )
                 continue
             if field_name == "type" and value in ("product", "stockable", "physical"):
-                value = "consu"
+                # Storable on this version is detailed_type "product" (type follows it).
+                field_name, value = "detailed_type", "product"
+                field = field_defs[field_name]
             try:
                 field.convert_to_cache(value, record_for_cache)
             except Exception as err:
