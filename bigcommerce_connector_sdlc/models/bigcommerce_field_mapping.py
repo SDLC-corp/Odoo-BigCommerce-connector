@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 from odoo import _, api, fields, models
@@ -588,14 +589,31 @@ class BigCommerceFieldMapping(models.Model):
             dt = fields.Date.to_date(value)
             return fields.Date.to_string(dt) if dt else None
         if ttype == "datetime":
-            dt = fields.Datetime.to_datetime(value)
-            if not dt and isinstance(value, str):
-                try:
-                    dt = parsedate_to_datetime(value)
-                except (TypeError, ValueError):
-                    dt = None
+            dt = self._parse_mapping_datetime(value)
             return fields.Datetime.to_string(dt) if dt else None
         return value
+
+    @api.model
+    def _parse_mapping_datetime(self, value):
+        """Naive UTC datetime from an Odoo datetime string, ISO 8601 with an offset or the
+        RFC 2822 dates BigCommerce v2 sends ("Tue, 20 Oct 2026 10:00:00 +0000"), else None.
+
+        fields.Datetime.to_datetime() raises on the last two instead of returning None, so
+        every order import logged a failed date_order transform."""
+        if isinstance(value, datetime):
+            dt = value
+        else:
+            dt = None
+            for parse in (fields.Datetime.to_datetime, datetime.fromisoformat, parsedate_to_datetime):
+                try:
+                    dt = parse(str(value).strip())
+                except (TypeError, ValueError):
+                    continue
+                if dt:
+                    break
+        if dt and dt.tzinfo:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt or None
 
     @api.model
     def _normalize_connector(self, connector):
@@ -741,12 +759,7 @@ class BigCommerceFieldMapping(models.Model):
             dt = fields.Date.to_date(value)
             return fields.Date.to_string(dt) if dt else None
         if ttype == "datetime":
-            dt = fields.Datetime.to_datetime(value)
-            if not dt and isinstance(value, str):
-                try:
-                    dt = parsedate_to_datetime(value)
-                except (TypeError, ValueError):
-                    dt = None
+            dt = self._parse_mapping_datetime(value)
             return fields.Datetime.to_string(dt) if dt else None
         if ttype == "json":
             return json.loads(value) if isinstance(value, str) else value

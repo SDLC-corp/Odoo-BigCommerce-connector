@@ -5,7 +5,7 @@ import { useService } from "@web/core/utils/hooks";
 
 // Odoo 15 web client runs Owl 1: no @odoo/owl module; hooks live in owl.hooks.
 const { Component } = owl;
-const { onMounted, onWillUnmount, useState } = owl.hooks;
+const { onMounted, onPatched, onWillUnmount, useState } = owl.hooks;
 
 export class BigCommerceDashboard extends Component {
     setup() {
@@ -36,6 +36,14 @@ export class BigCommerceDashboard extends Component {
 
         onWillUnmount(() => {
             this._stopAutoRefresh();
+        });
+
+        onPatched(() => {
+            const container = this.el && this.el.querySelector(".bc-chat-messages");
+            if (this._scrollChatPending && container) {
+                this._scrollChatPending = false;
+                container.scrollTop = container.scrollHeight;
+            }
         });
     }
 
@@ -245,15 +253,9 @@ export class BigCommerceDashboard extends Component {
     }
 
     _scrollChatToBottom() {
-        setTimeout(() => {
-            if (!this.el) {
-                return;
-            }
-            const container = this.el.querySelector(".bc-chat-messages");
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }, 0);
+        // Scroll in onPatched, once the new message is rendered: the 0 ms timeout ran before
+        // Owl rendered it, so the newest message always stayed below the visible area.
+        this._scrollChatPending = true;
     }
 
     trendWidth(value, row) {
