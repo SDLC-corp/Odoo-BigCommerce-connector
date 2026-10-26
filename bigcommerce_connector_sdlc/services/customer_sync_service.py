@@ -594,6 +594,23 @@ class BigCommerceCustomerSyncService:
             return {"success": False, "message": result.get("message"), "status_code": result.get("status_code")}
 
         if remote_id:
+            # The store answered with a customer id already linked to another contact: report
+            # it for this contact instead of breaking the unique (instance, customer id) rule,
+            # which aborted the whole export and rolled back the bindings already written.
+            linked = self.env["bigcommerce.customer.binding"].sudo().search(
+                [
+                    ("instance_id", "=", self.instance.id),
+                    ("bigcommerce_customer_id", "=", str(remote_id)),
+                    ("id", "!=", binding.id),
+                ],
+                limit=1,
+            )
+            if linked:
+                return {
+                    "success": False,
+                    "message": "BigCommerce customer %s is already linked to %s."
+                    % (remote_id, linked.partner_id.display_name or linked.email or linked.id),
+                }
             vals = {
                 "instance_id": self.instance.id,
                 "partner_id": partner.id,

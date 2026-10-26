@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
 export class BigCommerceDashboard extends Component {
@@ -10,6 +10,7 @@ export class BigCommerceDashboard extends Component {
         this._dashboardRequestSeq = 0;
         this._quickActionRequestSeq = 0;
         this._autoRefreshTimer = null;
+        this.chatMessagesRef = useRef("chatMessages");
         this.state = useState({
             loading: false,
             rangeDays: "7",
@@ -33,6 +34,14 @@ export class BigCommerceDashboard extends Component {
 
         onWillUnmount(() => {
             this._stopAutoRefresh();
+        });
+
+        onPatched(() => {
+            const container = this.chatMessagesRef.el;
+            if (this._scrollChatPending && container) {
+                this._scrollChatPending = false;
+                container.scrollTop = container.scrollHeight;
+            }
         });
     }
 
@@ -242,15 +251,9 @@ export class BigCommerceDashboard extends Component {
     }
 
     _scrollChatToBottom() {
-        setTimeout(() => {
-            if (!this.el) {
-                return;
-            }
-            const container = this.el.querySelector(".bc-chat-messages");
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }, 0);
+        // Owl 2 components have no this.el: the message list is reached through its t-ref, and
+        // scrolled in onPatched, once the new message is rendered (a 0 ms timeout ran before).
+        this._scrollChatPending = true;
     }
 
     trendWidth(value, row) {

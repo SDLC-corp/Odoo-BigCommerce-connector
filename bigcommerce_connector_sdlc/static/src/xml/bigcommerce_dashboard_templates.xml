@@ -216,7 +216,7 @@
                     </button>
                 </div>
 
-                <div class="bc-chat-messages">
+                <div class="bc-chat-messages" t-ref="chatMessages">
                     <div class="bc-chat-empty" t-if="!(state.messages || []).length">
                         Ask about orders, stock, sync health, or click a quick action.
                     </div>

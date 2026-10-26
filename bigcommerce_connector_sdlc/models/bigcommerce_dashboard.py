@@ -790,11 +790,14 @@ class BigCommerceDashboard(models.AbstractModel):
             "stale_instances": stale_instances,
         }
 
+        # lazy=False: one row per (day, status) with its "__count"; a lazy read_group
+        # groups by the day only and drops "status", so every trend bar stayed 0.
         day_groups = self.env["bigcommerce.sync.log"].read_group(
             sync_log_domain + [("status", "in", ("success", "failed"))],
             ["status"],
             ["create_date:day", "status"],
             orderby="create_date:day asc",
+            lazy=False,
         )
         trend_map = {}
         for group in day_groups:
@@ -806,11 +809,12 @@ class BigCommerceDashboard(models.AbstractModel):
                 {"date": str(date_key), "success": 0, "failed": 0},
             )
             if group.get("status") == "success":
-                bucket["success"] = group.get("status_count", 0)
+                bucket["success"] = group.get("__count", 0)
             if group.get("status") == "failed":
-                bucket["failed"] = group.get("status_count", 0)
+                bucket["failed"] = group.get("__count", 0)
 
-        trends = sorted(trend_map.values(), key=lambda row: row["date"])
+        # Rows arrive in day order; the labels ("21 Oct 2026") do not sort chronologically.
+        trends = list(trend_map.values())
 
         return {
             "filters": {
