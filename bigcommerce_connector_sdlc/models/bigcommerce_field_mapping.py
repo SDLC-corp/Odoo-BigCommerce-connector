@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
@@ -731,7 +732,14 @@ class BigCommerceFieldMapping(models.Model):
         for key, val in parsed.items():
             normalized[str(key)] = val
             normalized[str(key).lower()] = val
+            normalized[self._selection_map_key(key)] = val
         return normalized
+
+    @api.model
+    def _selection_map_key(self, value):
+        """Case/space-insensitive map key: "Awaiting Fulfillment" (what BigCommerce sends)
+        and "awaiting_fulfillment" (older default maps) are the same key."""
+        return re.sub(r"[\s\-]+", "_", str(value).strip().lower())
 
     @api.model
     def _transform_mapping_value(self, value, transform_type, mapping=False):
@@ -766,7 +774,7 @@ class BigCommerceFieldMapping(models.Model):
         if ttype == "selection":
             map_dict = self._parse_json_map(mapping.selection_map_json if mapping else False)
             txt = str(value)
-            return map_dict.get(txt, map_dict.get(txt.lower(), txt))
+            return map_dict.get(txt, map_dict.get(txt.lower(), map_dict.get(self._selection_map_key(txt), txt)))
         return value
 
     @api.model
@@ -1094,7 +1102,7 @@ class BigCommerceFieldMapping(models.Model):
             {"name": "phone -> res.partner.phone", "mapping_type": "customer", "direction": "import", "odoo_model": "res.partner", "odoo_field_name": "phone", "bigcommerce_field_name": "phone", "transform_type": "string", "is_system": True},
             {"name": "order_number -> sale.order.client_order_ref", "mapping_type": "order", "direction": "import", "odoo_model": "sale.order", "odoo_field_name": "client_order_ref", "bigcommerce_field_name": "order_number", "transform_type": "string", "is_system": True},
             {"name": "date_created -> sale.order.date_order", "mapping_type": "order", "direction": "import", "odoo_model": "sale.order", "odoo_field_name": "date_order", "bigcommerce_field_name": "date_created", "transform_type": "datetime", "is_system": True},
-            {"name": "status -> sale.order.state", "mapping_type": "order", "direction": "import", "odoo_model": "sale.order", "odoo_field_name": "state", "bigcommerce_field_name": "status", "transform_type": "selection", "selection_map_json": "{\"awaiting_fulfillment\": \"sale\", \"completed\": \"sale\", \"cancelled\": \"cancel\"}", "is_system": True},
+            {"name": "status -> sale.order.state", "mapping_type": "order", "direction": "import", "odoo_model": "sale.order", "odoo_field_name": "state", "bigcommerce_field_name": "status", "transform_type": "selection", "selection_map_json": "{\"Awaiting Fulfillment\": \"sale\", \"Awaiting Shipment\": \"sale\", \"Awaiting Pickup\": \"sale\", \"Partially Shipped\": \"sale\", \"Shipped\": \"sale\", \"Completed\": \"sale\", \"Partially Refunded\": \"sale\", \"Cancelled\": \"cancel\", \"Declined\": \"cancel\", \"Pending\": \"draft\", \"Awaiting Payment\": \"draft\", \"Incomplete\": \"draft\", \"Manual Verification Required\": \"draft\", \"Refunded\": \"draft\", \"Disputed\": \"draft\"}", "is_system": True},
         ]
 
     def action_save_mapping(self):
@@ -1152,7 +1160,7 @@ class BigCommerceFieldMapping(models.Model):
             return {"id": 12, "name": "Men T-Shirts", "description": "Category description", "parent_id": 5, "is_visible": True, "sort_order": 1}
         if self.mapping_type == "customer":
             return {"first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "phone": "+1-555-1000", "company": "Acme Inc", "customer_group_id": 3}
-        return {"id": 12345, "order_number": 100045, "status": "awaiting_fulfillment", "date_created": "2026-03-30T10:10:00+00:00", "currency_code": "USD", "customer_id": 901, "subtotal_ex_tax": 90.0, "total_inc_tax": 99.0}
+        return {"id": 12345, "order_number": 100045, "status": "Awaiting Fulfillment", "date_created": "2026-03-30T10:10:00+00:00", "currency_code": "USD", "customer_id": 901, "subtotal_ex_tax": 90.0, "total_inc_tax": 99.0}
 
     def action_test_mapping(self):
         self.ensure_one()
