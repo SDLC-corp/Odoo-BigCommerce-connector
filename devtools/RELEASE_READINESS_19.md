@@ -28,12 +28,13 @@ server, synthetic data) - **production-verified** (real store).
 | Inventory: traceable adjustments, level 0 applied, delta export, button and cron follow the master | yes | - | no |
 | Purge cron, dashboard (`_read_group`), views for every action and role, empty states | yes | yes | n/a |
 | **Upgrade from the published build (38e19473)** | yes | yes (upgraded DB) | - |
+| Read-only role granted on upgrade to internal users without a BigCommerce role | yes (test + upgrade check) | - | n/a |
 
 Evidence:
 
-- Odoo runtime suite: **72 test methods (88 including subtests), 0 failed, 0 errors** on a fresh
+- Odoo runtime suite: **73 test methods (91 including subtests), 0 failed, 0 errors** on the test
   database, and the same suite **0 failed, 0 errors** on a database installed from the published
-  build and upgraded. 0 view/translation warnings, 0 duplicate-label warnings at install.
+  build and upgraded (`odoo19_enh_bigcommerce_upg2`). 0 view/translation warnings, 0 duplicate-label warnings at install.
 - Browser: private headless Chrome against the upgraded database, 10 screens x 3 roles
   (administrator, manager, read-only user): **0 JavaScript console errors, 0 error dialogs**;
   read-only users see no action buttons, managers no administrator buttons.
@@ -50,9 +51,12 @@ odoo-bin -c odoo.conf --addons-path=<odoo>/odoo/addons,<odoo>/addons,<this repo>
 
 The published commit was installed in a fresh database, seeded through its own code (two connectors,
 a bound product with stock, two confirmed and delivered BigCommerce orders - one already "exported" -,
-a rejected webhook, a failed webhook, a done webhook, logs, default mappings), then upgraded with
-`-u`. Result: migration ran (`4 security records made updatable`, `1 rejected webhook event
-quarantined`, `1 delivery marked as already exported`), groups renamed and re-chained, the
+a rejected webhook, a failed webhook, a done webhook, logs, default mappings, and users: a plain
+employee, a BigCommerce Manager, an archived employee, a portal user), then upgraded with `-u`.
+Result: migration ran (`4 security records made updatable`, `read-only BigCommerce User role given
+to 1 internal user(s): upg_plain`, `1 rejected webhook event quarantined`, `1 delivery marked as
+already exported`); the manager kept Manager, the administrator kept Administrator, the archived
+and portal users got nothing; groups renamed and re-chained, the
 administrator got the BigCommerce Administrator role, 10 record rules and 7 crons present, existing
 bindings got their company, the order checkpoint started 30 days before the upgrade, the failed
 event stays retryable. Both historical orders were flagged "Total differs" because Odoo added its
@@ -103,12 +107,14 @@ files, README, listing claims).
 - R5 Order status is not written back; refunds/returns, brands, multi-location inventory and variant
   export are not implemented (the listing now says so).
 - R6 Enterprise and Odoo.sh untested. Scale not measured.
-- R7 Users who relied on implicit access (any internal user) lose the BigCommerce menu after the
-  upgrade until a role is assigned (documented in the README).
+- R7 On upgrade every active internal user without a BigCommerce role receives the read-only User
+  role (owner decision), so they can still *read* connectors without credentials, bindings, logs and
+  the dashboard. Administrators should remove it from users who should not see store data.
 
 ## 5. Owner decisions needed
 
 - Testimonials, deployment counts ("200+ live stores", "since 2018") and the 10-hour implementation
   offer on the store page are business claims this review cannot verify; they were left unchanged.
-- Whether to auto-assign the read-only role to existing internal users on upgrade (currently not).
+- ~~Auto-assign the read-only role on upgrade~~ - decided by the owner: yes on upgrade from the
+  published build, no on fresh installs. Implemented in `migrations/19.0.2.1.0/post-migration.py`.
 - Whether to publish 19.0 before B1 is closed.

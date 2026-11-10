@@ -5,3 +5,4 @@ from . import test_runtime
 from . import test_security
 from . import test_shipments
 from . import test_webhooks
+from . import test_upgrade
