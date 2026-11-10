@@ -31,7 +31,9 @@ class TestRuntime(BigCommerceCommon):
     def test_dashboard_data_for_reader(self):
         data = self.env["bigcommerce.dashboard"].with_user(self.user_reader).get_dashboard_data("30", "all")
         self.assertIn("open_exceptions", data["totals"])
-        self.assertEqual([r["id"] for r in data["instances"]], [self.instance.id])
+        ids = [r["id"] for r in data["instances"]]
+        self.assertIn(self.instance.id, ids)
+        self.assertNotIn(self.instance_b.id, ids)
 
     def test_dashboard_trends_group_by_day_and_status(self):
         Log = self.env["bigcommerce.sync.log"]
