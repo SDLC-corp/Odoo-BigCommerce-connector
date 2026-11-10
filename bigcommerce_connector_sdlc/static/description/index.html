@@ -1539,9 +1539,11 @@
          - demo_orders.gif     (suggested: order syncing in real-time)
          - demo_sync.gif       (suggested: inventory or status sync clip)
 
-       7 PNG screenshots (you already have these):
-         - Dashboard.png, Orders.png, Inventory.png, Customers.png
-         - coupons.png, cancelled_orders.png, sync_reports.png
+       8 PNG screenshots (captured from the 19.0.2.1.0 build, demo data):
+         - Dashboard.png, Connector.png, Orders.png, Inventory.png
+         - Customers.png, Exceptions.png, Webhooks.png, Sync reports.png
+         The demo section above currently reuses Dashboard.png, Orders.png
+         and Exceptions.png in place of the GIFs.
 
        PLACEHOLDERS / VERIFY:
          - GIF filenames are placeholders - name your exports to match
@@ -1574,11 +1576,11 @@
 
       <!-- GIF 1: Hero (full width) -->
       <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 14px; padding: 14px; margin-bottom: 18px">
-        <img src="Dashboard.png" alt="Dashboard demo" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
+        <img src="Dashboard.png" alt="BigCommerce sync dashboard" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
         <div style="padding: 14px 6px 4px 6px;">
           <div style="display: inline-block; background-color: #3d5afe; color: #ffffff; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 10px; margin-right: 10px; vertical-align: middle;">FEATURED</div>
           <h3 style="display: inline-block; vertical-align: middle; font-size: 19px; font-weight: 800; color: #0c0b1d; margin: 0;">
-            Real-time Dashboard <span style="color: #3d5afe;">Sync</span>
+            Sync <span style="color: #3d5afe;">Dashboard</span>
           </h3>
         </div>
       </div>
@@ -1587,20 +1589,20 @@
       <div class="row" style="margin: 0;">
         <div class="col-md-6" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 14px; padding: 14px">
-            <img src="Orders.png" alt="Order sync demo" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
+            <img src="Orders.png" alt="Imported BigCommerce orders" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
             <div style="padding: 14px 6px 4px 6px;">
               <h3 style="font-size: 17px; font-weight: 800; color: #0c0b1d; margin: 0;">
-                Order Flow <span style="color: #3d5afe;">in Real-time</span>
+                Imported <span style="color: #3d5afe;">Orders</span>
               </h3>
             </div>
           </div>
         </div>
         <div class="col-md-6" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 14px; padding: 14px">
-            <img src="Cancelled orders.png" alt="Sync animation" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
+            <img src="Exceptions.png" alt="Order exception queue" style="width: 100%; height: auto; display: block; border-radius: 8px;"/>
             <div style="padding: 14px 6px 4px 6px;">
               <h3 style="font-size: 17px; font-weight: 800; color: #0c0b1d; margin: 0;">
-                Inventory <span style="color: #3d5afe;">Updates</span>
+                Exception <span style="color: #3d5afe;">Queue</span>
               </h3>
             </div>
           </div>
@@ -1621,19 +1623,19 @@
       <div class="row" style="margin: 0 0 6px 0;">
         <div class="col-md-4" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Dashboard.png" alt="Sync Dashboard" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
-            <div style="text-align: center; font-size: 14px; font-weight: 700; color: #0c0b1d;">Sync Dashboard</div>
+            <img src="Connector.png" alt="Connector setup" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <div style="text-align: center; font-size: 14px; font-weight: 700; color: #0c0b1d;">Connector Setup</div>
           </div>
         </div>
         <div class="col-md-4" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Orders.png" alt="Order Management" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
-            <div style="text-align: center; font-size: 14px; font-weight: 700; color: #0c0b1d;">Order Management</div>
+            <img src="Orders.png" alt="Order Bindings" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <div style="text-align: center; font-size: 14px; font-weight: 700; color: #0c0b1d;">Order Bindings</div>
           </div>
         </div>
         <div class="col-md-4" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Inventory.png" alt="Inventory Sync" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <img src="Inventory.png" alt="Inventory" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
             <div style="text-align: center; font-size: 14px; font-weight: 700; color: #0c0b1d;">Inventory Sync</div>
           </div>
         </div>
@@ -1643,26 +1645,26 @@
       <div class="row" style="margin: 0;">
         <div class="col-md-3" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Customers.png" alt="Customer Records" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <img src="Customers.png" alt="Customer Bindings" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
             <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Customer Records</div>
           </div>
         </div>
         <div class="col-md-3" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="coupons.png" alt="Coupons" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
-            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Coupons &amp; Discounts</div>
+            <img src="Exceptions.png" alt="Order Exceptions" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Order Exceptions</div>
           </div>
         </div>
         <div class="col-md-3" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Cancelled orders.png" alt="Cancelled Orders" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
-            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Cancellations</div>
+            <img src="Webhooks.png" alt="Webhook Inbox" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Webhook Inbox</div>
           </div>
         </div>
         <div class="col-md-3" style="padding: 9px;">
           <div style="background-color: #f4f7ff; border: 1px solid #e4eaff; border-radius: 12px; padding: 12px">
-            <img src="Sync reports.png" alt="Sync Reports" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
-            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Sync Reports</div>
+            <img src="Sync reports.png" alt="Sync Logs" style="width: 100%; height: auto; display: block; border-radius: 6px; margin-bottom: 12px;"/>
+            <div style="text-align: center; font-size: 13px; font-weight: 700; color: #0c0b1d;">Sync Logs</div>
           </div>
         </div>
       </div>
