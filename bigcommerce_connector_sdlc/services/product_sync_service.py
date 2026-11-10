@@ -2,6 +2,7 @@
 
 import base64
 import logging
+from datetime import datetime, timezone
 
 import requests
 from odoo import fields
@@ -27,6 +28,11 @@ class BigCommerceProductSyncService:
         self._variant_binding_cache = {}
         self._product_by_sku_cache = {}
         self._inventory_location = None
+
+    def _reset_caches(self):
+        self._template_binding_cache = {}
+        self._variant_binding_cache = {}
+        self._product_by_sku_cache = {}
 
     def import_products(self, limit=50):
         if limit in (None, False, "", 0, "0"):
@@ -58,9 +64,17 @@ class BigCommerceProductSyncService:
         page_limit = min(100, limit) if limit else 100
         batch_size = self._resolve_batch_size(limit)
 
+        checkpoint = False if self.env.context.get("bigcommerce_full_product_import") else (
+            self.instance.product_sync_checkpoint
+        )
+        params = {"include": "variants,images,options", "sort": "date_modified", "direction": "asc"}
+        if checkpoint:
+            params["date_modified:min"] = fields.Datetime.to_datetime(checkpoint).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        newest_modified = False
+
         for page_result in self.client.iter_paginated(
             "/v3/catalog/products",
-            params={"include": "variants,images,options"},
+            params=params,
             limit=page_limit,
             max_pages=None,
             data_key="data",
@@ -102,16 +116,25 @@ class BigCommerceProductSyncService:
 
             for batch in self._iter_batches(page_products, batch_size):
                 for bc_product in batch:
+                    modified = self._parse_iso_datetime(bc_product.get("date_modified"))
+                    if modified and (not newest_modified or modified > newest_modified):
+                        newest_modified = modified
                     try:
-                        template, was_created = self._create_or_update_product(bc_product)
-                        self._create_or_update_template_binding(template, bc_product)
-                        self._sync_variants(template, bc_product)
-                        self._sync_images(template, bc_product)
+                        # One savepoint per product: a database error on one product (constraint,
+                        # invalid mapped value) no longer aborts the transaction for the whole batch.
+                        with self.env.cr.savepoint():
+                            template, was_created = self._create_or_update_product(bc_product)
+                            self._create_or_update_template_binding(template, bc_product)
+                            self._sync_variants(template, bc_product)
+                            self._sync_images(template, bc_product)
                         if was_created:
                             created += 1
                         else:
                             updated += 1
                     except Exception as err:
+                        # The savepoint rolled back records the lookup caches may point to (a partner or
+                        # product created for this record): forget them so the next record does not reuse them.
+                        self._reset_caches()
                         failed += 1
                         failed_items.append("%s: %s" % (bc_product.get("name") or "Unknown", str(err)))
                         _logger.exception("Product import failed for remote id %s", bc_product.get("id"))
@@ -120,6 +143,8 @@ class BigCommerceProductSyncService:
             if limit and processed >= limit:
                 break
 
+        if newest_modified and not self.env.context.get("bigcommerce_full_product_import"):
+            self.instance.sudo().write({"product_sync_checkpoint": newest_modified})
         message = "Product import completed. Total: %s, Created: %s, Updated: %s, Failed: %s." % (
             processed,
             created,
@@ -157,8 +182,38 @@ class BigCommerceProductSyncService:
         self._sync_images(template, product)
         return {"success": True, "message": "Product synced."}
 
+    def _templates_to_export(self, limit):
+        """Saleable goods of the connector company that are new to the store or changed since.
+
+        Before 19.0.2.1.0 the export pushed the first `limit` saleable templates of every company
+        (services and the connector's own placeholder products included) on every run.
+        """
+        limit = max(1, int(limit or 50))
+        company = self.instance.company_id
+        templates = self.env["product.template"].search(
+            [
+                ("sale_ok", "=", True),
+                ("type", "=", "consu"),
+                ("company_id", "in", [False, company.id]),
+                ("default_code", "not =like", "BC-MISSING-%"),
+            ],
+            order="write_date desc, id desc",
+        )
+        bindings = self.env["bigcommerce.product.binding"].sudo().search(
+            [
+                ("instance_id", "=", self.instance.id),
+                ("product_tmpl_id", "in", templates.ids),
+                ("bigcommerce_variant_id", "=", False),
+            ]
+        )
+        synced_at = {b.product_tmpl_id.id: b.last_synced_at for b in bindings}
+        selected = templates.filtered(
+            lambda t: t.id not in synced_at or not synced_at[t.id] or t.write_date > synced_at[t.id]
+        )
+        return selected[:limit]
+
     def export_products(self, limit=50):
-        templates = self.env["product.template"].search([("sale_ok", "=", True)], limit=max(1, int(limit or 50)))
+        templates = self._templates_to_export(limit)
         exported = failed = 0
         failed_items = []
         for template in templates:
@@ -263,12 +318,83 @@ class BigCommerceProductSyncService:
         self._sync_template_inventory_level(template=created_template, bc_product=bc_product)
         return created_template, True
 
+    def _variant_option_pairs(self, bc_variant):
+        """[(attribute name, value name)] of a BigCommerce variant (empty for the base variant)."""
+        pairs = []
+        for option in bc_variant.get("option_values") or []:
+            if not isinstance(option, dict):
+                continue
+            attribute = self._clean_text(option.get("option_display_name"), max_len=128)
+            value = self._clean_text(option.get("label"), max_len=128)
+            if attribute and value:
+                pairs.append((attribute, value))
+        return pairs
+
+    def _ensure_attribute_lines(self, template, variants):
+        """Create the Odoo attributes/values of the BigCommerce options and add them to the template.
+
+        Existing attribute lines and values are kept; only missing ones are added, so a template
+        configured by hand is extended, never stripped. Returns True when the product has options.
+        """
+        wanted = {}
+        for bc_variant in variants:
+            for attribute_name, value_name in self._variant_option_pairs(bc_variant):
+                wanted.setdefault(attribute_name, [])
+                if value_name not in wanted[attribute_name]:
+                    wanted[attribute_name].append(value_name)
+        if not wanted:
+            return False
+        attribute_model = self.env["product.attribute"].sudo()
+        value_model = self.env["product.attribute.value"].sudo()
+        line_commands = []
+        for attribute_name, value_names in wanted.items():
+            attribute = attribute_model.search([("name", "=", attribute_name)], limit=1)
+            if not attribute:
+                attribute = attribute_model.create({"name": attribute_name, "create_variant": "always"})
+            values = value_model
+            for value_name in value_names:
+                value = attribute.value_ids.filtered(lambda v, n=value_name: v.name == n)[:1]
+                if not value:
+                    value = value_model.create({"name": value_name, "attribute_id": attribute.id})
+                values |= value
+            line = template.attribute_line_ids.filtered(lambda l, a=attribute: l.attribute_id == a)[:1]
+            if line:
+                missing = values - line.value_ids
+                if missing:
+                    line_commands.append((1, line.id, {"value_ids": [(4, v.id) for v in missing]}))
+            else:
+                line_commands.append((0, 0, {"attribute_id": attribute.id, "value_ids": [(6, 0, values.ids)]}))
+        if line_commands:
+            template.sudo().write({"attribute_line_ids": line_commands})
+        return True
+
+    def _variant_by_options(self, template, bc_variant):
+        pairs = set(self._variant_option_pairs(bc_variant))
+        if not pairs:
+            return self.env["product.product"]
+        for variant in template.with_context(active_test=False).product_variant_ids:
+            combination = {
+                (ptav.attribute_id.name, ptav.name) for ptav in variant.product_template_attribute_value_ids
+            }
+            if combination == pairs:
+                return variant
+        return self.env["product.product"]
+
     def _sync_variants(self, template, bc_product):
         variants = bc_product.get("variants") or []
         if not variants:
             return
+        has_options = self._ensure_attribute_lines(template, variants)
         for bc_variant in variants:
+            if has_options and not self._variant_option_pairs(bc_variant):
+                # The option-less "base variant" of a product with options is not a sellable
+                # variant on its own; it is represented by the template binding.
+                continue
             variant = self._find_variant(template, bc_variant)
+            if variant and variant.product_tmpl_id != template:
+                variant = self.env["product.product"]
+            if not variant and has_options:
+                variant = self._variant_by_options(template, bc_variant)
             if not variant:
                 variant = template.product_variant_id
             sku = (bc_variant.get("sku") or "").strip()
@@ -338,6 +464,7 @@ class BigCommerceProductSyncService:
             "bigcommerce_variant_id": False,
             "bigcommerce_sku": (bc_product.get("sku") or "").strip() or False,
             "bigcommerce_inventory_level": inventory_level,
+            "bigcommerce_inventory_known": inventory_level is not None,
             "bigcommerce_is_featured": bool(bc_product.get("is_featured")),
             "bigcommerce_is_visible": bool(bc_product.get("is_visible", True)),
             "sync_state": "synced",
@@ -366,6 +493,7 @@ class BigCommerceProductSyncService:
             "bigcommerce_variant_id": remote_variant_id,
             "bigcommerce_sku": (bc_variant.get("sku") or "").strip() or False,
             "bigcommerce_inventory_level": inventory_level,
+            "bigcommerce_inventory_known": inventory_level is not None,
             "sync_state": "synced",
             "last_synced_at": fields.Datetime.now(),
             "last_error": False,
@@ -384,13 +512,18 @@ class BigCommerceProductSyncService:
             [("instance_id", "=", self.instance.id), ("product_tmpl_id", "=", template.id), ("bigcommerce_variant_id", "=", False)],
             limit=1,
         )
+        # name, type, weight and price are required by BigCommerce to create a product; the weight
+        # was missing before 19.0.2.1.0, so every new product was refused (HTTP 422).
         payload = {
             "name": template.name,
             "type": "physical",
+            "weight": float(template.weight or 0.0),
             "price": template.list_price,
             "description": template.description_sale or "",
             "is_visible": bool(template.active),
         }
+        if template.default_code and template.product_variant_count <= 1:
+            payload["sku"] = template.default_code
         mapping_payload = self.mapping_model._prepare_bigcommerce_payload_from_mapping(
             record=template,
             mapping_type="product",
@@ -407,6 +540,8 @@ class BigCommerceProductSyncService:
             data = body.get("data") if isinstance(body, dict) else {}
             if isinstance(data, dict) and data.get("id"):
                 self._create_or_update_template_binding(template, {"id": data.get("id"), "sku": template.default_code})
+        else:
+            binding.write({"last_synced_at": fields.Datetime.now(), "sync_state": "synced", "last_error": False})
         return {"success": True}
 
     def _image_url(self, image):
@@ -521,6 +656,9 @@ class BigCommerceProductSyncService:
             return
         if not template or not template.product_variant_id:
             return
+        if any(self._variant_option_pairs(v) for v in (bc_product.get("variants") or []) if isinstance(v, dict)):
+            # Products with options carry their stock per variant (applied in _sync_variants).
+            return
         qty = self._safe_int(self._extract_product_inventory_level(bc_product), default=None)
         if qty is None:
             return
@@ -629,6 +767,18 @@ class BigCommerceProductSyncService:
         if safe_sku:
             return safe_sku
         return "BigCommerce Product"
+
+    def _parse_iso_datetime(self, value):
+        """BigCommerce v3 ISO-8601 timestamp -> naive UTC datetime (False when unparsable)."""
+        if not value or not isinstance(value, str):
+            return False
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if parsed.tzinfo:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
 
     def _safe_int(self, value, default=0):
         if value is None or (isinstance(value, bool) and value is False):

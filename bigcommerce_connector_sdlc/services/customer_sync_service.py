@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from datetime import datetime, timezone
 
 from odoo import fields
 
@@ -17,6 +18,11 @@ class BigCommerceCustomerSyncService:
         self.env = instance.env
         self.client = BigCommerceApiClient(instance)
         self.mapping_model = self.env["bigcommerce.field.mapping"]
+        self._binding_by_remote_id_cache = {}
+        self._partner_by_email_cache = {}
+        self._partner_by_name_cache = {}
+
+    def _reset_caches(self):
         self._binding_by_remote_id_cache = {}
         self._partner_by_email_cache = {}
         self._partner_by_name_cache = {}
@@ -90,17 +96,27 @@ class BigCommerceCustomerSyncService:
         failed_items = []
 
         batch_size = self._resolve_batch_size(limit)
+        newest_modified = False
         for batch in self._iter_batches(customers, batch_size):
             self._prime_customer_caches(batch)
             for bc_customer in batch:
+                modified = self._parse_iso_datetime(bc_customer.get("date_modified"))
+                if modified and (not newest_modified or modified > newest_modified):
+                    newest_modified = modified
                 try:
-                    partner, was_created = self._create_or_update_partner(bc_customer)
-                    self._create_or_update_binding(partner, bc_customer)
+                    # One savepoint per customer: a database error on one contact no longer
+                    # aborts the transaction for the whole batch.
+                    with self.env.cr.savepoint():
+                        partner, was_created = self._create_or_update_partner(bc_customer)
+                        self._create_or_update_binding(partner, bc_customer)
                     if was_created:
                         created += 1
                     else:
                         updated += 1
                 except Exception as err:
+                    # The savepoint rolled back records the lookup caches may point to (a partner or
+                    # product created for this record): forget them so the next record does not reuse them.
+                    self._reset_caches()
                     failed += 1
                     remote_id = self._as_remote_id(bc_customer)
                     name = self._display_name(bc_customer)
@@ -122,6 +138,8 @@ class BigCommerceCustomerSyncService:
                         note="Customer '%s' email '%s' failed." % (name or "Unknown", email or "N/A"),
                     )
 
+        if newest_modified:
+            self.instance.sudo().write({"customer_sync_checkpoint": newest_modified})
         total = len(customers)
         success = failed == 0
         message = (
@@ -168,8 +186,17 @@ class BigCommerceCustomerSyncService:
     def export_customers(self, limit=50):
         """Export Odoo contacts to BigCommerce (simple optional push)."""
         limit = int(limit or 50)
+        # Only customers of the connector company are pushed. Before 19.0.2.1.0 every contact with an
+        # e-mail address (vendors, employees, other companies' contacts) was sent to the storefront.
         partners = self.env["res.partner"].search(
-            [("type", "=", "contact"), ("email", "!=", False)],
+            [
+                ("type", "=", "contact"),
+                ("is_company", "=", False),
+                ("email", "!=", False),
+                ("customer_rank", ">", 0),
+                ("company_id", "in", [False, self.instance.company_id.id]),
+                ("user_ids", "=", False),
+            ],
             limit=max(1, limit),
             order="write_date desc,id desc",
         )
@@ -194,7 +221,7 @@ class BigCommerceCustomerSyncService:
 
     def import_customer_by_id(self, customer_id):
         """Import or update a single BigCommerce customer by id (webhook-safe helper)."""
-        result = self.client.get("/v3/customers/%s" % customer_id, timeout=25)
+        result = self.client.get("/v3/customers", params={"id:in": str(customer_id)}, timeout=25)
         if not result.get("success"):
             return {"success": False, "message": result.get("message") or "Failed to fetch customer by id."}
 
@@ -224,9 +251,14 @@ class BigCommerceCustomerSyncService:
         total_duration_ms = 0
         last_result = {}
 
+        params = {"sort": "date_modified:asc"}
+        if self.instance.customer_sync_checkpoint:
+            params["date_modified:min"] = fields.Datetime.to_datetime(
+                self.instance.customer_sync_checkpoint
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
         for page_result in self.client.iter_paginated(
             "/v3/customers",
-            params={},
+            params=params,
             limit=page_limit,
             max_pages=None,
             data_key="data",
@@ -300,7 +332,7 @@ class BigCommerceCustomerSyncService:
             if email in self._partner_by_email_cache:
                 return cached_partner or partner_model
             email_candidates = partner_model.search(
-                [("email", "ilike", email)],
+                [("email", "=ilike", email), ("company_id", "in", [False, self.instance.company_id.id])],
                 limit=10,
             )
             exact_email_matches = email_candidates.filtered(
@@ -323,7 +355,9 @@ class BigCommerceCustomerSyncService:
             if name:
                 if name in self._partner_by_name_cache:
                     return self._partner_by_name_cache[name] or partner_model
-                name_matches = partner_model.search([("name", "=", name)], limit=2)
+                name_matches = partner_model.search(
+                    [("name", "=", name), ("company_id", "in", [False, self.instance.company_id.id])], limit=2
+                )
                 if len(name_matches) == 1:
                     self._partner_by_name_cache[name] = name_matches[0]
                     return name_matches[0]
@@ -566,9 +600,10 @@ class BigCommerceCustomerSyncService:
             ],
             limit=1,
         )
+        first_name, last_name = self._split_name(partner.name)
         payload = {
-            "first_name": (partner.name or "Customer")[:50],
-            "last_name": (partner.name or "Customer")[:50],
+            "first_name": first_name[:100],
+            "last_name": last_name[:100],
             "email": self._normalized_email(partner.email),
             "phone": (partner.phone or "").strip(),
         }
@@ -583,11 +618,14 @@ class BigCommerceCustomerSyncService:
         if not payload["email"]:
             return {"success": False, "message": "Email is required for customer export."}
 
+        # The v3 Customers API takes a list of customers on POST/PUT /v3/customers and has no
+        # /v3/customers/{id} endpoint (the published build used one for updates).
         if binding and binding.bigcommerce_customer_id:
-            result = self.client.put("/v3/customers/%s" % binding.bigcommerce_customer_id, payload=payload)
+            update = dict(payload, id=int(binding.bigcommerce_customer_id))
+            result = self.client.put("/v3/customers", payload=[update])
             remote_id = binding.bigcommerce_customer_id
         else:
-            result = self.client.post("/v3/customers", payload=payload)
+            result = self.client.post("/v3/customers", payload=[payload])
             remote_id = self._extract_remote_customer_id(result.get("response_body"))
 
         if not result.get("success"):
@@ -625,6 +663,26 @@ class BigCommerceCustomerSyncService:
             else:
                 self.env["bigcommerce.customer.binding"].sudo().create(vals)
         return {"success": True}
+
+    def _split_name(self, name):
+        """'Ada Lovelace' -> ('Ada', 'Lovelace'); one word -> (word, word) since both are required."""
+        parts = (name or "").strip().split()
+        if not parts:
+            return "Customer", "Customer"
+        if len(parts) == 1:
+            return parts[0], parts[0]
+        return " ".join(parts[:-1]), parts[-1]
+
+    def _parse_iso_datetime(self, value):
+        if not value or not isinstance(value, str):
+            return False
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if parsed.tzinfo:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
 
     def _extract_remote_customer_id(self, response_body):
         if isinstance(response_body, dict):

@@ -60,5 +60,15 @@
             <field name="interval_number">20</field>
             <field name="active">True</field>
         </record>
+
+        <record id="ir_cron_bigcommerce_purge_history" model="ir.cron">
+            <field name="name">BigCommerce History Purge</field>
+            <field name="model_id" ref="model_bigcommerce_connector"/>
+            <field name="state">code</field>
+            <field name="code">model.run_cron_purge_history()</field>
+            <field name="interval_type">days</field>
+            <field name="interval_number">1</field>
+            <field name="active">True</field>
+        </record>
     </data>
 </odoo>

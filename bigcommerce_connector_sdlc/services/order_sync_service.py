@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from datetime import timezone
+from datetime import timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 from odoo import fields
@@ -19,6 +19,14 @@ class BigCommerceOrderSyncService:
         self.env = instance.env
         self.client = BigCommerceApiClient(instance)
         self.mapping_model = self.env["bigcommerce.field.mapping"]
+        self._order_binding_cache = {}
+        self._partner_by_remote_customer_cache = {}
+        self._partner_by_email_cache = {}
+        self._product_by_remote_variant_cache = {}
+        self._product_by_remote_product_cache = {}
+        self._product_by_sku_cache = {}
+
+    def _reset_caches(self):
         self._order_binding_cache = {}
         self._partner_by_remote_customer_cache = {}
         self._partner_by_email_cache = {}
@@ -46,7 +54,8 @@ class BigCommerceOrderSyncService:
             }
         )
 
-        fetch_result = self._fetch_orders(limit=limit)
+        checkpoint = self.instance.order_sync_checkpoint
+        fetch_result = self._fetch_orders(limit=limit, modified_after=checkpoint)
         if not fetch_result.get("success"):
             message = fetch_result.get("message") or "Unable to fetch orders from BigCommerce."
             self._log_failure(
@@ -70,7 +79,7 @@ class BigCommerceOrderSyncService:
 
         orders = fetch_result.get("orders", [])
         if not orders:
-            message = "Order import completed. No orders returned from BigCommerce."
+            message = "Order import completed. No new or modified orders in BigCommerce."
             self._log_success(
                 message=message,
                 request_url=fetch_result.get("url"),
@@ -95,8 +104,12 @@ class BigCommerceOrderSyncService:
         failed_items = []
 
         batch_size = self._resolve_batch_size(limit)
+        newest_modified = False
         for batch in self._iter_batches(orders, batch_size):
             for bc_order in batch:
+                modified = self._parse_bc_datetime(bc_order.get("date_modified"))
+                if modified and (not newest_modified or modified > newest_modified):
+                    newest_modified = modified
                 try:
                     # One savepoint per order: an order that fails (e.g. while being confirmed)
                     # leaves nothing half-imported behind.
@@ -108,6 +121,9 @@ class BigCommerceOrderSyncService:
                     else:
                         updated += 1
                 except Exception as err:
+                    # The savepoint rolled back records the lookup caches may point to (a partner or
+                    # product created for this record): forget them so the next record does not reuse them.
+                    self._reset_caches()
                     failed += 1
                     remote_id = self._as_remote_id(bc_order)
                     order_number = self._order_number(bc_order)
@@ -115,18 +131,24 @@ class BigCommerceOrderSyncService:
                     item_label = order_number or ("ID %s" % remote_id if remote_id else "Unknown Order")
                     failed_items.append("%s: %s" % (item_label, error_text))
 
-                    _logger.exception(
-                        "BigCommerce order import failed for instance_id=%s remote_id=%s order_number=%s",
+                    _logger.warning(
+                        "BigCommerce order import failed for instance_id=%s remote_id=%s order_number=%s: %s",
                         self.instance.id,
                         remote_id,
                         order_number,
+                        error_text,
                     )
+                    # The failed order is parked in the exception queue (error binding with a
+                    # "Re-sync" button) so the checkpoint can move on without losing it.
+                    self._mark_order_failed(bc_order, error_text)
 
                     self._log_failure(
                         message=error_text,
                         resource_remote_id=remote_id,
                         note="Order '%s' failed." % (order_number or "Unknown"),
                     )
+
+        self._advance_checkpoint(checkpoint, newest_modified)
 
         total = len(orders)
         success = failed == 0
@@ -171,6 +193,50 @@ class BigCommerceOrderSyncService:
             "failed_items": failed_items[:5],
         }
 
+    def _advance_checkpoint(self, previous, newest_modified):
+        """Move the incremental checkpoint to the newest modification date processed.
+
+        Failed orders do not hold it back (they are parked as error bindings). When the newest
+        order carries the checkpoint timestamp itself, it moves one second forward so a burst of
+        same-second modifications cannot pin the import on one page forever.
+        """
+        if not newest_modified:
+            return
+        newest = fields.Datetime.to_datetime(newest_modified)
+        previous = fields.Datetime.to_datetime(previous) if previous else False
+        if previous and newest <= previous:
+            newest = previous + timedelta(seconds=1)
+        self.instance.sudo().write({"order_sync_checkpoint": newest})
+
+    def _mark_order_failed(self, bc_order, error_text):
+        """Record a failed order as an error binding (exception queue, Re-sync button)."""
+        remote_id = self._as_remote_id(bc_order)
+        if not remote_id:
+            return
+        binding_model = self.env["bigcommerce.order.binding"].sudo()
+        binding = binding_model.search(
+            [("instance_id", "=", self.instance.id), ("bigcommerce_order_id", "=", remote_id)], limit=1
+        )
+        vals = {
+            "sync_state": "error",
+            "last_error": (error_text or "")[:2000],
+            "status_on_bigcommerce": str(bc_order.get("status") or bc_order.get("status_id") or ""),
+            "bigcommerce_total_amount": self._extract_order_total(bc_order),
+            "bigcommerce_currency_code": self._extract_order_currency_code(bc_order),
+        }
+        if binding:
+            binding.write(vals)
+        else:
+            vals.update(
+                {
+                    "instance_id": self.instance.id,
+                    "bigcommerce_order_id": remote_id,
+                    "bigcommerce_order_number": self._order_number(bc_order) or False,
+                }
+            )
+            binding_model.create(vals)
+        self._order_binding_cache.pop(remote_id, None)
+
     def import_order_by_id(self, order_id):
         """Import a single BigCommerce order by id (webhook-safe helper)."""
         result = self.client.get("/v2/orders/%s" % order_id, timeout=25)
@@ -181,21 +247,30 @@ class BigCommerceOrderSyncService:
         if not isinstance(body, dict):
             return {"success": False, "message": "Unexpected order payload format."}
 
-        sale_order, _ = self._create_or_update_sale_order(body)
+        sale_order, _created = self._create_or_update_sale_order(body)
         self._create_or_update_binding(sale_order, body)
         return {"success": True, "message": "Order %s synced." % order_id}
 
-    def _fetch_orders(self, limit=20):
-        """Fetch orders from BigCommerce orders API."""
+    def _fetch_orders(self, limit=20, modified_after=False):
+        """Fetch orders modified after the checkpoint, oldest modification first.
+
+        Without a date filter and an explicit sort, BigCommerce returns its oldest orders first, so
+        a fixed limit kept re-importing the same first orders and never reached new ones (the
+        behaviour before 19.0.2.1.0).
+        """
         orders = []
         page_limit = max(20, min(100, int(limit or 20)))
         total_retry_count = 0
         total_duration_ms = 0
         last_result = {}
+        params = {"sort": "date_modified:asc"}
+        if modified_after:
+            stamp = fields.Datetime.to_datetime(modified_after)
+            params["min_date_modified"] = stamp.strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
         for page_result in self.client.iter_paginated(
             "/v2/orders",
-            params={},
+            params=params,
             limit=page_limit,
             max_pages=None,
             data_key="data",
@@ -302,7 +377,9 @@ class BigCommerceOrderSyncService:
                 ],
                 limit=1,
             )
-            if customer_binding and customer_binding.partner_id:
+            if customer_binding and customer_binding.partner_id and customer_binding.partner_id.company_id in (
+                self.env["res.company"], self.instance.company_id
+            ):
                 partner = customer_binding.partner_id.with_env(self.env)
                 partner = self._refresh_partner_identity_from_order(partner, bc_order)
                 self._partner_by_remote_customer_cache[remote_customer_id] = partner
@@ -314,7 +391,9 @@ class BigCommerceOrderSyncService:
             cached_partner = self._partner_by_email_cache.get(email)
             if email in self._partner_by_email_cache:
                 return cached_partner if cached_partner else partner_model
-            email_candidates = partner_model.search([("email", "ilike", email)], limit=10)
+            email_candidates = partner_model.search(
+                [("email", "=ilike", email), ("company_id", "in", [False, self.instance.company_id.id])], limit=10
+            )
             exact_email_matches = email_candidates.filtered(
                 lambda partner: self._normalized_email(partner.email) == email
             )
@@ -540,6 +619,11 @@ class BigCommerceOrderSyncService:
         parsed_date = self._parse_bc_datetime(bc_created_at)
         if parsed_date:
             vals["date_order"] = parsed_date
+        pricelist = self._resolve_pricelist(bc_order)
+        if pricelist:
+            vals["pricelist_id"] = pricelist.id
+        if self.instance.warehouse_id:
+            vals["warehouse_id"] = self.instance.warehouse_id.id
 
         mapping_result = self.mapping_model._prepare_odoo_vals_from_mapping(
             payload=bc_order,
@@ -551,6 +635,28 @@ class BigCommerceOrderSyncService:
         vals.update(mapping_result.get("vals") or {})
 
         return vals
+
+    def _resolve_pricelist(self, bc_order):
+        """Pricelist whose currency is the one BigCommerce charged in.
+
+        The connector pricelist is used when it is in that currency (or the order states none);
+        otherwise an active pricelist of the company in the order currency, if any. When nothing
+        matches, Odoo's default applies and the order is flagged "Currency differs".
+        """
+        configured = self.instance.pricelist_id
+        code = self._extract_order_currency_code(bc_order)
+        if not code:
+            return configured
+        if configured and configured.currency_id.name == code:
+            return configured
+        return self.env["product.pricelist"].search(
+            [
+                ("currency_id.name", "=", code),
+                ("company_id", "in", [False, self.instance.company_id.id]),
+            ],
+            order="company_id, sequence, id",
+            limit=1,
+        )
 
     def _prepare_sale_order_line_vals(self, bc_line, product, sale_order):
         """Prepare safe sale.order.line values from a BigCommerce order line."""
@@ -603,6 +709,7 @@ class BigCommerceOrderSyncService:
         remote_id = self._as_remote_id(bc_order)
         if not remote_id:
             raise ValueError("BigCommerce order id is missing in response payload.")
+        self._placeholder_used = None
 
         binding = self._find_existing_order_binding(bc_order)
         partner = self._find_or_create_customer(bc_order)
@@ -640,9 +747,11 @@ class BigCommerceOrderSyncService:
         if sale_order.order_line:
             sale_order.order_line.unlink()
 
+        self._placeholder_used = False
         for bc_line in bc_lines:
             product = self._find_product_for_line(bc_line)
             if not product:
+                self._placeholder_used = True
                 product = self._handle_missing_product(bc_line)
                 if not product:
                     raise ValueError(
@@ -697,6 +806,9 @@ class BigCommerceOrderSyncService:
             "imported_at": now,
             "last_error": False,
         }
+        if getattr(self, "_placeholder_used", None) is not None:
+            vals["has_placeholder_lines"] = bool(self._placeholder_used)
+            self._placeholder_used = None
 
         binding_model = self.env["bigcommerce.order.binding"].sudo()
         binding = binding_model.search(
@@ -868,7 +980,10 @@ class BigCommerceOrderSyncService:
 
     def _add_discount_line(self, sale_order, bc_order):
         """Add a simple discount line with negative amount when provided."""
-        discount_amount = self._safe_float(bc_order.get("discount_amount"), default=0.0)
+        # BigCommerce reports manual discounts and coupon discounts separately; both reduce the total.
+        discount_amount = abs(self._safe_float(bc_order.get("discount_amount"), default=0.0)) + abs(
+            self._safe_float(bc_order.get("coupon_discount"), default=0.0)
+        )
         if not discount_amount:
             return
 
@@ -888,12 +1003,22 @@ class BigCommerceOrderSyncService:
         )
 
     def _get_or_create_service_product(self, default_code, name):
-        product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+        product = self.env["product.product"].with_context(active_test=False).search(
+            [
+                ("default_code", "=", default_code),
+                ("type", "=", "service"),
+                ("company_id", "in", [False, self.instance.company_id.id]),
+            ],
+            limit=1,
+        )
         if product:
             return product
 
         unit_uom = self.env.ref("uom.product_uom_unit")
-        category = self.env.ref("product.product_category_all")
+        # Odoo 19 has neither the purchase UoM field (uom_po_id) nor the "All" product category
+        # record (product.product_category_all) any more: referencing them made every order with
+        # shipping, a discount or an unknown product fail before 19.0.2.1.0. The default category
+        # applies.
         template = self.env["product.template"].create(
             {
                 "name": name,
@@ -902,8 +1027,6 @@ class BigCommerceOrderSyncService:
                 "sale_ok": True,
                 "purchase_ok": False,
                 "uom_id": unit_uom.id,
-                "uom_po_id": unit_uom.id,
-                "categ_id": category.id,
                 "list_price": 0.0,
             }
         )
@@ -915,7 +1038,9 @@ class BigCommerceOrderSyncService:
         line_name = (bc_line.get("name") or "").strip()
         remote_product_id = self._line_remote_product_id(bc_line) or "N/A"
 
-        default_code = sku or ("BC-MISSING-%s" % remote_product_id)
+        # Never reuse the real SKU as the placeholder code: the placeholder would later be
+        # mistaken for the real product by SKU matching.
+        default_code = "BC-MISSING-%s" % (sku or remote_product_id)
         name = line_name or ("BigCommerce Item %s" % remote_product_id)
         placeholder_name = "[BigCommerce] %s" % name
 
@@ -930,10 +1055,20 @@ class BigCommerceOrderSyncService:
         return self._get_or_create_service_product(default_code=default_code, name=placeholder_name)
 
     def _find_existing_sale_order(self, order_number):
+        """Adopt a sale order created for this order number before its binding existed.
+
+        Only an order that no BigCommerce binding claims is adopted: every store numbers its orders
+        from 100, so with two stores in one company, the second store's order #100 used to be
+        merged into the first store's sale order #100 (before 19.0.2.1.0).
+        """
         if not order_number:
             return self.env["sale.order"]
+        bound_ids = self.env["bigcommerce.order.binding"].sudo().search(
+            [("sale_order_id", "!=", False), ("bigcommerce_order_number", "=", order_number)]
+        ).sale_order_id.ids
         domain = [
             ("company_id", "=", self.instance.company_id.id),
+            ("id", "not in", bound_ids),
             "|",
             ("client_order_ref", "=", order_number),
             ("origin", "=", "BigCommerce #%s" % order_number),
