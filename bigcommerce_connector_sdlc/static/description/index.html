@@ -114,7 +114,7 @@
         <!-- Feature pills (4 quick differentiators) -->
         <div style="margin-bottom: 32px;">
           <span style="display: inline-block; background-color: #0f1638; color: #e4eaff; padding: 8px 14px; border-radius: 30px; font-size: 12px; font-weight: 700; margin-right: 8px; margin-bottom: 8px; border: 1px solid #243a8f;">
-            <i class="fa fa-check" style="margin-right: 6px; color: #3d5afe;"></i>Real-time webhook sync
+            <i class="fa fa-check" style="margin-right: 6px; color: #3d5afe;"></i>Webhook-driven sync (queued, every 5 minutes)
           </span>
           <span style="display: inline-block; background-color: #0f1638; color: #e4eaff; padding: 8px 14px; border-radius: 30px; font-size: 12px; font-weight: 700; margin-right: 8px; margin-bottom: 8px; border: 1px solid #243a8f;">
             <i class="fa fa-check" style="margin-right: 6px; color: #3d5afe;"></i>10-hour expert setup
@@ -263,7 +263,7 @@
         <span style="color: #3d5afe;">BigCommerce</span> Odoo Connector
       </h2>
       <p style="font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 28px 0;">
-        Seamlessly synchronize products, orders, customers, and inventory between your BigCommerce store and Odoo in real-time. Eliminate manual data entry, reduce errors, and run a unified e-commerce operation with bidirectional sync, automated mapping, and granular control over what gets synced and when.
+        Seamlessly synchronize products, orders, customers, and inventory between your BigCommerce store and Odoo automatically, with webhooks processed every few minutes. Eliminate manual data entry, reduce errors, and run a unified e-commerce operation with bidirectional sync, automated mapping, and granular control over what gets synced and when.
       </p>
 
       <div style="margin-bottom: 32px;">
@@ -1119,7 +1119,7 @@
               <i class="fa fa-cubes" style="color: #ffffff; font-size: 32px; vertical-align: middle;"></i>
             </span>
             <div style="margin-top: 20px; font-size: 16px; font-weight: 800; color: #0c0b1d;">BigCommerce <span style="color: #3d5afe;">&harr;</span> Odoo</div>
-            <div style="margin-top: 4px; font-size: 13px; color: #6b7280;">Real-time, two-way sync</div>
+            <div style="margin-top: 4px; font-size: 13px; color: #6b7280;">Webhook-driven, two-way sync</div>
           </div>
         </div>
 
@@ -1536,7 +1536,7 @@
 
        3 animated GIFs you need to create/export:
          - demo_dashboard.gif  (suggested: dashboard tour, hero clip)
-         - demo_orders.gif     (suggested: order syncing in real-time)
+         - demo_orders.gif     (suggested: order syncing)
          - demo_sync.gif       (suggested: inventory or status sync clip)
 
        8 PNG screenshots (captured from the 19.0.2.1.0 build, demo data):
@@ -1915,7 +1915,7 @@
             <div style="font-size: 13px; color: #3d5afe; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px;">WHAT'S NEW</div>
             <div style="font-size: 14px; color: #374151; line-height: 1.8;">
               <div><i class="fa fa-magic" style="color: #3d5afe; margin-right: 10px;"></i>Built-in AI: sales &amp; inventory insights, product content assistant, and chatbot</div>
-              <div><i class="fa fa-bolt" style="color: #3d5afe; margin-right: 10px;"></i>Webhook-based real-time sync architecture</div>
+              <div><i class="fa fa-bolt" style="color: #3d5afe; margin-right: 10px;"></i>Webhook inbox with retries, plus scheduled incremental imports</div>
               <div><i class="fa fa-cubes" style="color: #3d5afe; margin-right: 10px;"></i>Multi-warehouse inventory mapping</div>
               <div><i class="fa fa-tachometer" style="color: #3d5afe; margin-right: 10px;"></i>Catalog sync up to 5x faster on large stores</div>
               <div><i class="fa fa-bug" style="color: #3d5afe; margin-right: 10px;"></i>Fixes for variant pricing edge cases</div>
