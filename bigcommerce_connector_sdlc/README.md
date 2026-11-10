@@ -52,11 +52,17 @@ The migration script:
 
 * re-classifies stored *rejected* webhook callbacks so they are never processed;
 * marks deliveries the previous version already reported as exported, so they are not sent twice;
-* starts the incremental order checkpoint 30 days before the upgrade (clear it to re-import history).
+* starts the incremental order checkpoint 30 days before the upgrade (clear it to re-import history);
 
-Access changed: internal users no longer see BigCommerce automatically. Give users one of the three
-roles (Settings -> Users). Existing BigCommerce Managers keep the Manager role; settings
-administrators become BigCommerce Administrators.
+* gives the read-only **BigCommerce User** role to every active internal user who has neither the
+  Manager nor the Administrator role, so nobody loses the BigCommerce menu (the published build let
+  every internal user in). Portal/public and archived users get nothing.
+
+Access model after the upgrade: existing BigCommerce Managers keep the Manager role, settings
+administrators become BigCommerce Administrators, everyone else internal is a read-only User.
+Remove the role from users who should not see BigCommerce (Settings -> Users). On a **fresh
+install** no role is granted automatically: only settings administrators get access until you
+assign roles.
 
 ## Tests
 
