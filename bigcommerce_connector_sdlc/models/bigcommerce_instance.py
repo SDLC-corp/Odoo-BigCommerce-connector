@@ -46,11 +46,13 @@ class BigCommerceConnector(models.Model):
     )
     client_secret = fields.Char(
         copy=False,
+        groups="bigcommerce_connector_sdlc.group_bigcommerce_admin",
         help="Optional BigCommerce API client secret.",
     )
     access_token = fields.Char(
         required=True,
         copy=False,
+        groups="bigcommerce_connector_sdlc.group_bigcommerce_admin",
         help="API access token used for authenticated BigCommerce requests.",
     )
     api_base_url = fields.Char(
@@ -60,7 +62,7 @@ class BigCommerceConnector(models.Model):
     )
     webhook_secret = fields.Char(
         copy=False,
-        groups="base.group_system",
+        groups="bigcommerce_connector_sdlc.group_bigcommerce_admin",
         help="Shared secret used to validate incoming BigCommerce webhooks.",
     )
     webhook_callback_url = fields.Char(
@@ -101,8 +103,8 @@ class BigCommerceConnector(models.Model):
     )
     debug_mode = fields.Boolean()
     ai_chat_enabled = fields.Boolean(default=False)
-    gemini_api_key = fields.Char(copy=False, groups="base.group_system")
-    gemini_model = fields.Char(default="gemini-1.5-flash")
+    gemini_api_key = fields.Char(copy=False, groups="bigcommerce_connector_sdlc.group_bigcommerce_admin")
+    gemini_model = fields.Char(default="gemini-2.5-flash")
     ai_system_prompt = fields.Text()
     last_product_sync_at = fields.Datetime(readonly=True, copy=False)
     last_category_sync_at = fields.Datetime(readonly=True, copy=False)
@@ -117,10 +119,16 @@ class BigCommerceConnector(models.Model):
     last_webhook_process_at = fields.Datetime(readonly=True, copy=False)
     webhook_last_sync_at = fields.Datetime(readonly=True, copy=False)
     last_tested_at = fields.Datetime(readonly=True, copy=False)
-    auto_sync_products = fields.Boolean(related="auto_product_sync", readonly=False)
-    auto_sync_orders = fields.Boolean(related="auto_order_sync", readonly=False)
-    auto_sync_inventory = fields.Boolean(related="auto_inventory_export", readonly=False)
-    auto_sync_shipments = fields.Boolean(related="auto_shipment_export", readonly=False)
+    auto_sync_products = fields.Boolean(string="Auto-Import Products", related="auto_product_sync", readonly=False)
+    auto_sync_orders = fields.Boolean(string="Auto-Import Orders", related="auto_order_sync", readonly=False)
+    auto_sync_inventory = fields.Boolean(
+        string="Auto-Sync Inventory",
+        related="auto_inventory_export",
+        readonly=False,
+        help="Scheduled inventory sync in the direction of the Inventory Master: import from BigCommerce, "
+        "or export Odoo quantities when Odoo is the master.",
+    )
+    auto_sync_shipments = fields.Boolean(string="Auto-Export Shipments", related="auto_shipment_export", readonly=False)
     auto_sync_customers = fields.Boolean(default=False)
     auto_product_sync = fields.Boolean(default=False)
     auto_order_sync = fields.Boolean(default=False)
@@ -133,6 +141,44 @@ class BigCommerceConnector(models.Model):
     sync_limit_inventory = fields.Integer(default=200)
     sync_limit_shipment = fields.Integer(default=100)
     sync_limit_webhook = fields.Integer(default=200)
+    order_sync_checkpoint = fields.Datetime(
+        string="Import Orders Modified After",
+        copy=False,
+        default=lambda self: fields.Datetime.now() - timedelta(days=30),
+        help="Incremental order import: only orders modified in BigCommerce after this moment are "
+        "requested, oldest first. It advances automatically after each run. A new connector starts "
+        "30 days back so the first run does not import (and confirm) the whole order history; "
+        "clear it to import everything.",
+    )
+    product_sync_checkpoint = fields.Datetime(
+        string="Import Products Modified After",
+        copy=False,
+        help="Incremental product import checkpoint (advances automatically). Clear it for a full re-import.",
+    )
+    customer_sync_checkpoint = fields.Datetime(
+        string="Import Customers Modified After",
+        copy=False,
+        help="Incremental customer import checkpoint (advances automatically). Clear it for a full re-import.",
+    )
+    webhook_max_retries = fields.Integer(
+        default=5,
+        help="A webhook event that failed this many times is no longer retried automatically; "
+        "it stays in the exception queue until someone retries it by hand.",
+    )
+    log_retention_days = fields.Integer(
+        default=30,
+        help="Sync logs and processed/rejected webhook events older than this are purged daily. "
+        "0 keeps everything.",
+    )
+    order_total_tolerance = fields.Float(
+        default=0.05,
+        help="An imported order whose Odoo total differs from the BigCommerce total by more than this "
+        "amount is flagged in the exception queue.",
+    )
+    dashboard_exception_count = fields.Integer(
+        string="Open Exceptions",
+        compute="_compute_dashboard_exception_count",
+    )
     dashboard_product_count = fields.Integer(compute="_compute_dashboard_metrics")
     dashboard_order_count = fields.Integer(compute="_compute_dashboard_metrics")
     dashboard_error_count = fields.Integer(compute="_compute_dashboard_metrics")
@@ -347,12 +393,12 @@ class BigCommerceConnector(models.Model):
                 return
             raise
 
-    @api.depends("store_hash", "api_base_url", "access_token")
+    @api.depends("store_hash", "api_base_url")
     def _compute_is_ready_for_connection(self):
         for instance in self:
             store_hash = (instance.store_hash or "").strip()
             api_base_url = (instance.api_base_url or "").strip()
-            access_token = (instance.access_token or "").strip()
+            access_token = (instance.sudo().access_token or "").strip()
             instance.is_ready_for_connection = bool(
                 store_hash and api_base_url and access_token
             )
@@ -483,13 +529,70 @@ class BigCommerceConnector(models.Model):
             else:
                 instance.dashboard_status = "ok"
 
+    # ------------------------------------------------------------------
+    # Access control helpers
+    # ------------------------------------------------------------------
+    _BC_ROLE_GROUPS = {
+        "user": "bigcommerce_connector_sdlc.group_bigcommerce_user",
+        "manager": "bigcommerce_connector_sdlc.group_bigcommerce_manager",
+        "admin": "bigcommerce_connector_sdlc.group_bigcommerce_admin",
+    }
+
+    def _bc_check_access(self, role="manager"):
+        """Raise AccessError unless the current user holds the BigCommerce role.
+
+        Superuser environments (cron jobs, sudo() service calls) pass. The records themselves must
+        also be visible to the user, which enforces the multi-company record rules.
+        """
+        if self.env.su:
+            return
+        group = self._BC_ROLE_GROUPS[role]
+        if not self.env.user.has_group(group):
+            raise AccessError(
+                _("This BigCommerce operation requires the '%(role)s' role.")
+                % {"role": {"user": _("User"), "manager": _("Manager"), "admin": _("Administrator")}[role]}
+            )
+        self.check_access("read")
+
+    def _bc_service_instance(self):
+        """The connector as seen by sync services: superuser, scoped to the connector company.
+
+        Callers must have passed _bc_check_access() first. Services need the API token (restricted
+        to administrators) and create sale orders, partners and stock moves that a BigCommerce
+        manager may not be allowed to create directly.
+        """
+        self.ensure_one()
+        return self.sudo().with_company(self.company_id)
+
+    def _compute_dashboard_exception_count(self):
+        order_model = self.env["bigcommerce.order.binding"].sudo()
+        event_model = self.env["bigcommerce.webhook.event"].sudo()
+        for instance in self:
+            if not instance.id:
+                instance.dashboard_exception_count = 0
+                continue
+            instance.dashboard_exception_count = order_model.search_count(
+                [("instance_id", "=", instance.id), ("needs_attention", "=", True)]
+            ) + event_model.search_count(
+                [("instance_id", "=", instance.id), ("status", "=", "failed")]
+            )
+
+    def action_open_exceptions(self):
+        self.ensure_one()
+        self._bc_check_access("user")
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "bigcommerce_connector_sdlc.action_bigcommerce_order_exceptions"
+        )
+        action["domain"] = [("instance_id", "=", self.id), ("needs_attention", "=", True)]
+        return action
+
     def _ensure_connector_ready(self):
         missing = []
         if not (self.store_hash or "").strip():
             missing.append(_("Store Hash"))
         if not (self.api_base_url or "").strip():
             missing.append(_("API Base URL"))
-        if not (self.access_token or "").strip():
+        if not (self.sudo().access_token or "").strip():
             missing.append(_("Access Token"))
         return missing
 
@@ -498,7 +601,10 @@ class BigCommerceConnector(models.Model):
         return [
             "store/order/created",
             "store/order/updated",
+            "store/product/created",
             "store/product/updated",
+            "store/product/deleted",
+            "store/customer/created",
             "store/customer/updated",
         ]
 
@@ -570,13 +676,16 @@ class BigCommerceConnector(models.Model):
             "is_active": True,
             "headers": {
                 "X-Webhook-Secret": webhook_secret,
+                # Lets Odoo route the callback to this database on servers hosting several
+                # databases (no session cookie is sent by BigCommerce).
+                "X-Odoo-Database": self.env.cr.dbname,
             },
         }
 
     def action_generate_webhook_secret(self):
         """Generate a webhook secret manually (system users only)."""
-        if not self.env.user.has_group("base.group_system"):
-            raise AccessError(_("Only system administrators can generate webhook secrets."))
+        self._bc_check_access("admin")
+        self = self.sudo()
         for instance in self:
             instance.sudo().write({"webhook_secret": secrets.token_hex(32)})
         return self._notification_action(_("Webhook secret generated successfully."), notif_type="success")
@@ -703,6 +812,8 @@ class BigCommerceConnector(models.Model):
 
     def action_generate_default_mappings(self):
         """Generate initial default mappings for each selected connector without duplicates."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         mapping_model = self.env["bigcommerce.field.mapping"].sudo()
         total_created = 0
         total_skipped = 0
@@ -766,6 +877,8 @@ class BigCommerceConnector(models.Model):
 
     def action_validate_field_mappings(self):
         """Validate active field mapping rules and return user-friendly diagnostics."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         mapping_model = self.env["bigcommerce.field.mapping"].sudo()
         invalid_total = 0
         summary_lines = []
@@ -836,6 +949,8 @@ class BigCommerceConnector(models.Model):
 
     def action_test_connection(self):
         """Execute a real BigCommerce API connectivity test."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         connected_count = 0
         error_count = 0
         for instance in self:
@@ -883,7 +998,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            client = BigCommerceApiClient(instance)
+            client = BigCommerceApiClient(instance._bc_service_instance())
             result = client.test_connection()
             status_code = result.get("status_code")
             response_status = str(status_code) if status_code is not None else False
@@ -946,6 +1061,8 @@ class BigCommerceConnector(models.Model):
 
     def action_sync_products(self):
         """Run manual product import from BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -982,7 +1099,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceProductSyncService(instance)
+            service = BigCommerceProductSyncService(instance._bc_service_instance())
             result = service.import_products(limit=instance.sync_limit_product or 100)
             instance.last_product_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1026,6 +1143,8 @@ class BigCommerceConnector(models.Model):
 
     def action_sync_customers(self):
         """Run manual customer import from BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1062,7 +1181,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceCustomerSyncService(instance)
+            service = BigCommerceCustomerSyncService(instance._bc_service_instance())
             result = service.import_customers(limit=instance.sync_limit_customer or 100)
             instance.last_customer_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1106,6 +1225,8 @@ class BigCommerceConnector(models.Model):
 
     def action_export_customers(self):
         """Run manual customer export from Odoo to BigCommerce."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1124,7 +1245,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceCustomerSyncService(instance)
+            service = BigCommerceCustomerSyncService(instance._bc_service_instance())
             result = service.export_customers(limit=instance.sync_limit_customer or 100)
             instance.connection_message = result.get("message")
             if result.get("success"):
@@ -1141,6 +1262,8 @@ class BigCommerceConnector(models.Model):
 
     def action_sync_categories(self):
         """Run manual category import from BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1156,7 +1279,7 @@ class BigCommerceConnector(models.Model):
                 summary_lines.append("%s: %s" % (instance.display_name, message))
                 continue
 
-            service = BigCommerceCategorySyncService(instance)
+            service = BigCommerceCategorySyncService(instance._bc_service_instance())
             result = service.import_categories(limit=instance.sync_limit_product or 200)
             instance.last_category_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1174,6 +1297,8 @@ class BigCommerceConnector(models.Model):
 
     def action_export_products(self):
         """Run manual product export from Odoo to BigCommerce."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1189,7 +1314,7 @@ class BigCommerceConnector(models.Model):
                 summary_lines.append("%s: %s" % (instance.display_name, message))
                 continue
 
-            service = BigCommerceProductSyncService(instance)
+            service = BigCommerceProductSyncService(instance._bc_service_instance())
             result = service.export_products(limit=instance.sync_limit_product or 100)
             instance.connection_message = result.get("message")
             if result.get("success"):
@@ -1206,6 +1331,8 @@ class BigCommerceConnector(models.Model):
 
     def action_sync_orders(self):
         """Run manual order import from BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1242,7 +1369,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceOrderSyncService(instance)
+            service = BigCommerceOrderSyncService(instance._bc_service_instance())
             result = service.import_orders(limit=instance.sync_limit_order or 50)
             instance.last_order_sync_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1286,6 +1413,8 @@ class BigCommerceConnector(models.Model):
 
     def action_import_inventory(self):
         """Run manual inventory sync from BigCommerce to Odoo."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1346,7 +1475,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceInventorySyncService(instance)
+            service = BigCommerceInventorySyncService(instance._bc_service_instance())
             result = service.import_inventory(limit=instance.sync_limit_inventory or 200)
             instance.last_inventory_export_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1390,6 +1519,8 @@ class BigCommerceConnector(models.Model):
 
     def action_export_inventory(self):
         """Run manual inventory export from Odoo to BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1426,7 +1557,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceInventorySyncService(instance)
+            service = BigCommerceInventorySyncService(instance._bc_service_instance())
             result = service.export_inventory(limit=instance.sync_limit_inventory or 200)
             instance.last_inventory_export_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1469,11 +1600,24 @@ class BigCommerceConnector(models.Model):
         )
 
     def action_sync_inventory(self):
-        """UI action: Sync Inventory from BigCommerce to Odoo."""
-        return self.action_import_inventory()
+        """UI action: sync inventory in the direction of each connector's Inventory Master.
+
+        Before 19.0.2.1.0 the button always imported, so a connector whose master is Odoo had no way
+        to export its quantities from the UI.
+        """
+        importing = self.filtered(lambda i: i.inventory_master == "bigcommerce")
+        exporting = self - importing
+        result = False
+        if exporting:
+            result = exporting.action_export_inventory()
+        if importing:
+            result = importing.action_import_inventory()
+        return result
 
     def action_export_shipments(self):
         """Run manual shipment export from Odoo to BigCommerce."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1510,7 +1654,7 @@ class BigCommerceConnector(models.Model):
                 )
                 continue
 
-            service = BigCommerceShipmentSyncService(instance)
+            service = BigCommerceShipmentSyncService(instance._bc_service_instance())
             result = service.export_shipments(limit=instance.sync_limit_shipment or 100)
             instance.last_shipment_export_at = fields.Datetime.now()
             instance.connection_message = result.get("message")
@@ -1554,6 +1698,8 @@ class BigCommerceConnector(models.Model):
 
     def action_register_webhooks(self):
         """Register standard BigCommerce webhooks for this instance."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1608,7 +1754,7 @@ class BigCommerceConnector(models.Model):
                     }
                 )
             scopes = instance._get_default_webhook_scopes()
-            client = BigCommerceApiClient(instance)
+            client = BigCommerceApiClient(instance._bc_service_instance())
 
             list_result = instance._list_remote_webhooks(client)
             existing_scope_map = {}
@@ -1684,6 +1830,8 @@ class BigCommerceConnector(models.Model):
 
     def action_delete_webhooks(self):
         """Delete registered webhooks for this connector destination."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1720,7 +1868,7 @@ class BigCommerceConnector(models.Model):
                     )
                 )
                 continue
-            client = BigCommerceApiClient(instance)
+            client = BigCommerceApiClient(instance._bc_service_instance())
             list_result = instance._list_remote_webhooks(client)
             if not list_result.get("success"):
                 failure_count += 1
@@ -1782,6 +1930,8 @@ class BigCommerceConnector(models.Model):
 
     def action_sync_webhooks_status(self):
         """Fetch remote webhook state and log summary for diagnostics."""
+        self._bc_check_access("admin")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1818,7 +1968,7 @@ class BigCommerceConnector(models.Model):
                     )
                 )
                 continue
-            client = BigCommerceApiClient(instance)
+            client = BigCommerceApiClient(instance._bc_service_instance())
             list_result = instance._list_remote_webhooks(client)
             if not list_result.get("success"):
                 failure_count += 1
@@ -1871,6 +2021,8 @@ class BigCommerceConnector(models.Model):
 
     def action_process_webhooks(self):
         """Run manual webhook processing for pending/failed events."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         success_count = 0
         failure_count = 0
         summary_lines = []
@@ -1894,6 +2046,8 @@ class BigCommerceConnector(models.Model):
 
     def action_send_test_webhook_event(self):
         """Create and process a synthetic webhook event to verify local pipeline wiring."""
+        self._bc_check_access("manager")
+        self = self.sudo()
         service = BigCommerceWebhookService(self.env)
         created = 0
         failed = 0
@@ -1954,7 +2108,7 @@ class BigCommerceConnector(models.Model):
         """Cron entrypoint: product import for enabled instances."""
         for instance in self.search([("active", "=", True), ("auto_product_sync", "=", True)]):
             try:
-                BigCommerceProductSyncService(instance).import_products(limit=instance.sync_limit_product or 100)
+                BigCommerceProductSyncService(instance._bc_service_instance()).import_products(limit=instance.sync_limit_product or 100)
                 self._safe_write_sync_timestamp(instance, "last_product_sync_at")
             except Exception as err:
                 _logger.exception("Cron product sync failed for instance_id=%s", instance.id)
@@ -1974,7 +2128,7 @@ class BigCommerceConnector(models.Model):
         """Cron entrypoint: order import for enabled instances."""
         for instance in self.search([("active", "=", True), ("auto_order_sync", "=", True)]):
             try:
-                BigCommerceOrderSyncService(instance).import_orders(limit=instance.sync_limit_order or 50)
+                BigCommerceOrderSyncService(instance._bc_service_instance()).import_orders(limit=instance.sync_limit_order or 50)
                 self._safe_write_sync_timestamp(instance, "last_order_sync_at")
             except Exception as err:
                 _logger.exception("Cron order sync failed for instance_id=%s", instance.id)
@@ -1994,7 +2148,7 @@ class BigCommerceConnector(models.Model):
         """Cron entrypoint: customer import for enabled instances."""
         for instance in self.search([("active", "=", True), ("auto_sync_customers", "=", True)]):
             try:
-                BigCommerceCustomerSyncService(instance).import_customers(limit=instance.sync_limit_customer or 100)
+                BigCommerceCustomerSyncService(instance._bc_service_instance()).import_customers(limit=instance.sync_limit_customer or 100)
                 self._safe_write_sync_timestamp(instance, "last_customer_sync_at")
             except Exception as err:
                 _logger.exception("Cron customer sync failed for instance_id=%s", instance.id)
@@ -2012,20 +2166,27 @@ class BigCommerceConnector(models.Model):
 
     @api.model
     def run_cron_sync_inventory(self):
-        """Cron entrypoint: inventory sync (BigCommerce -> Odoo) for enabled instances."""
+        """Cron entrypoint: inventory sync in the direction of each connector's inventory master.
+
+        BigCommerce master: stock levels are imported into Odoo. Odoo master: Odoo quantities are
+        exported to BigCommerce. (Before 19.0.2.1.0 only the import ran, so stores whose master
+        was Odoo were never updated automatically.)
+        """
         for instance in self.search([("active", "=", True), ("auto_inventory_export", "=", True)]):
+            operation = "inventory_import" if instance.inventory_master == "bigcommerce" else "inventory_export"
             try:
+                service = BigCommerceInventorySyncService(instance._bc_service_instance())
                 if instance.inventory_master == "bigcommerce":
-                    BigCommerceInventorySyncService(instance).import_inventory(
-                        limit=instance.sync_limit_inventory or 200
-                    )
-                    self._safe_write_sync_timestamp(instance, "last_inventory_export_at")
+                    service.import_inventory(limit=instance.sync_limit_inventory or 200)
+                else:
+                    service.export_inventory(limit=instance.sync_limit_inventory or 200)
+                self._safe_write_sync_timestamp(instance, "last_inventory_export_at")
             except Exception as err:
                 _logger.exception("Cron inventory sync failed for instance_id=%s", instance.id)
                 self.env["bigcommerce.sync.log"].sudo().create(
                     {
                         "instance_id": instance.id,
-                        "operation_type": "inventory_import",
+                        "operation_type": operation,
                         "resource_type": "inventory",
                         "status": "failed",
                         "error_message": str(err),
@@ -2039,7 +2200,7 @@ class BigCommerceConnector(models.Model):
         for instance in self.search([("active", "=", True), ("auto_inventory_export", "=", True)]):
             try:
                 if instance.inventory_master == "odoo":
-                    BigCommerceInventorySyncService(instance).export_inventory(
+                    BigCommerceInventorySyncService(instance._bc_service_instance()).export_inventory(
                         limit=instance.sync_limit_inventory or 200
                     )
                     self._safe_write_sync_timestamp(instance, "last_inventory_export_at")
@@ -2061,7 +2222,7 @@ class BigCommerceConnector(models.Model):
         """Cron entrypoint: shipment export for enabled instances."""
         for instance in self.search([("active", "=", True), ("auto_shipment_export", "=", True)]):
             try:
-                BigCommerceShipmentSyncService(instance).export_shipments(
+                BigCommerceShipmentSyncService(instance._bc_service_instance()).export_shipments(
                     limit=instance.sync_limit_shipment or 100
                 )
                 self._safe_write_sync_timestamp(instance, "last_shipment_export_at")
@@ -2098,3 +2259,38 @@ class BigCommerceConnector(models.Model):
                         "note": "Cron webhook processing failed.",
                     }
                 )
+
+    @api.model
+    def run_cron_purge_history(self):
+        """Cron entrypoint: purge old sync logs and finished/rejected webhook events.
+
+        Pending, processing and failed webhook events are never purged: they are work or
+        exceptions someone still has to look at.
+        """
+        log_model = self.env["bigcommerce.sync.log"].sudo()
+        event_model = self.env["bigcommerce.webhook.event"].sudo()
+        purged_logs = purged_events = 0
+        for instance in self.with_context(active_test=False).search([]):
+            days = int(instance.log_retention_days or 0)
+            if days <= 0:
+                continue
+            limit_date = fields.Datetime.now() - timedelta(days=days)
+            logs = log_model.search(
+                [("instance_id", "=", instance.id), ("create_date", "<", limit_date)], limit=50000
+            )
+            events = event_model.search(
+                [
+                    ("instance_id", "=", instance.id),
+                    ("status", "in", ("done", "rejected", "duplicate")),
+                    ("received_at", "<", limit_date),
+                ],
+                limit=50000,
+            )
+            purged_logs += len(logs)
+            purged_events += len(events)
+            logs.unlink()
+            events.unlink()
+        _logger.info(
+            "BigCommerce history purge removed %s sync logs and %s webhook events.", purged_logs, purged_events
+        )
+        return {"logs": purged_logs, "events": purged_events}

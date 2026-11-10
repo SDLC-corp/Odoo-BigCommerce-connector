@@ -15,14 +15,33 @@ class BigCommerceApiClient:
     DEFAULT_TIMEOUT = 25
     DEFAULT_RETRIES = 3
     DEFAULT_PAGE_LIMIT = 100
+    # A single wait (429 reset window, back-off) never exceeds this, and one request never
+    # spends more than MAX_TOTAL_WAIT_SECONDS sleeping, so a cron or an HTTP worker cannot be
+    # parked for minutes by a hostile or unusual rate-limit header.
+    MAX_WAIT_SECONDS = 15.0
+    MAX_TOTAL_WAIT_SECONDS = 45.0
+    # Methods that can be repeated safely after a timeout or a 5xx answer. A POST is only
+    # repeated when BigCommerce explicitly refused it (429) or when the connection was never
+    # established, because a timed-out POST may already have created the shipment, product
+    # or customer on the store.
+    IDEMPOTENT_METHODS = ("GET", "PUT", "DELETE", "HEAD")
+    RETRYABLE_STATUS = (500, 502, 503, 504)
 
     def __init__(self, instance):
         self.instance = instance
 
+    def _sleep(self, seconds):
+        """Indirection so tests can observe waits without sleeping."""
+        time.sleep(seconds)
+
     def _get_headers(self):
-        """Return request headers for BigCommerce REST calls."""
+        """Return request headers for BigCommerce REST calls.
+
+        The token is read with sudo(): it is restricted to BigCommerce administrators, while
+        managers and scheduled jobs still need to call the API.
+        """
         return {
-            "X-Auth-Token": (self.instance.access_token or "").strip(),
+            "X-Auth-Token": (self.instance.sudo().access_token or "").strip(),
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -36,12 +55,64 @@ class BigCommerceApiClient:
             endpoint = "/%s" % endpoint
         return "%s/%s%s" % (base, store_hash, endpoint)
 
+    @classmethod
+    def _rate_limit_wait(cls, headers, attempt):
+        """Seconds to wait before retrying a throttled (429) request.
+
+        BigCommerce states the remaining window in ``X-Rate-Limit-Time-Reset-Ms``; ``Retry-After``
+        is honoured as a fallback; otherwise exponential back-off. Always capped.
+        """
+        lowered = {str(k).lower(): v for k, v in (headers or {}).items()}
+        for key, factor in (("x-rate-limit-time-reset-ms", 0.001), ("retry-after", 1.0)):
+            raw = lowered.get(key)
+            if raw in (None, ""):
+                continue
+            try:
+                value = float(raw) * factor
+            except (TypeError, ValueError):
+                continue
+            if value >= 0:
+                return min(max(value, 0.2), cls.MAX_WAIT_SECONDS)
+        return min(2 ** (attempt + 1), cls.MAX_WAIT_SECONDS)
+
+    def _result(self, success, status_code, message, url, response_body, response_headers, payload,
+                attempt, started, waited):
+        return {
+            "success": success,
+            "status_code": status_code,
+            "message": message,
+            "url": url,
+            "response_body": response_body,
+            "response_headers": response_headers,
+            "request_payload": payload,
+            "retry_count": attempt,
+            "waited_seconds": round(waited, 3),
+            "duration_ms": int((time.monotonic() - started) * 1000),
+        }
+
     def _request(self, method, path, params=None, payload=None, timeout=None, retries=None):
-        """Perform an HTTP request against BigCommerce and return response metadata."""
+        """Perform an HTTP request against BigCommerce and return response metadata.
+
+        Never raises for transport problems: failures come back as ``success: False`` with a
+        human-readable ``message``.
+        """
+        method = (method or "GET").upper()
         timeout = timeout or self.DEFAULT_TIMEOUT
         retries = self.DEFAULT_RETRIES if retries is None else max(0, int(retries))
         url = self._build_url(path)
         started = time.monotonic()
+        idempotent = method in self.IDEMPOTENT_METHODS
+        state = {"waited": 0.0}
+
+        def _wait(seconds):
+            budget = max(0.0, self.MAX_TOTAL_WAIT_SECONDS - state["waited"])
+            seconds = min(float(seconds), self.MAX_WAIT_SECONDS, budget)
+            if seconds > 0:
+                self._sleep(seconds)
+                state["waited"] += seconds
+
+        def _can_retry():
+            return attempt < retries and state["waited"] < self.MAX_TOTAL_WAIT_SECONDS
 
         attempt = 0
         while True:
@@ -54,68 +125,58 @@ class BigCommerceApiClient:
                     json=payload,
                     timeout=timeout,
                 )
+            except requests.exceptions.ConnectTimeout:
+                # The connection was never established: safe to retry for every method.
+                if _can_retry():
+                    attempt += 1
+                    _wait(min(2 ** attempt, 5))
+                    continue
+                return self._result(False, None, "Connection to BigCommerce timed out.", url, None, {},
+                                    payload, attempt, started, state["waited"])
             except requests.exceptions.Timeout:
-                if attempt < retries:
+                if idempotent and _can_retry():
                     attempt += 1
-                    time.sleep(min(2**attempt, 5))
+                    _wait(min(2 ** attempt, 5))
                     continue
-                return {
-                    "success": False,
-                    "status_code": None,
-                    "message": "Connection to BigCommerce timed out.",
-                    "url": url,
-                    "response_body": None,
-                    "response_headers": {},
-                    "request_payload": payload,
-                    "retry_count": attempt,
-                    "duration_ms": int((time.monotonic() - started) * 1000),
-                }
+                message = "Connection to BigCommerce timed out."
+                if not idempotent:
+                    message += (" The request was not repeated automatically because BigCommerce may "
+                                "already have processed it; check the store before retrying.")
+                return self._result(False, None, message, url, None, {}, payload, attempt, started,
+                                    state["waited"])
             except requests.exceptions.ConnectionError:
-                if attempt < retries:
+                if _can_retry():
                     attempt += 1
-                    time.sleep(min(2**attempt, 5))
+                    _wait(min(2 ** attempt, 5))
                     continue
-                return {
-                    "success": False,
-                    "status_code": None,
-                    "message": "Unable to reach BigCommerce. Please verify network and URL settings.",
-                    "url": url,
-                    "response_body": None,
-                    "response_headers": {},
-                    "request_payload": payload,
-                    "retry_count": attempt,
-                    "duration_ms": int((time.monotonic() - started) * 1000),
-                }
+                return self._result(
+                    False, None, "Unable to reach BigCommerce. Please verify network and URL settings.",
+                    url, None, {}, payload, attempt, started, state["waited"],
+                )
             except requests.exceptions.RequestException as err:
-                _logger.exception("BigCommerce request failed: %s %s", method, url)
-                return {
-                    "success": False,
-                    "status_code": None,
-                    "message": "Unexpected network error while contacting BigCommerce: %s" % err,
-                    "url": url,
-                    "response_body": None,
-                    "response_headers": {},
-                    "request_payload": payload,
-                    "retry_count": attempt,
-                    "duration_ms": int((time.monotonic() - started) * 1000),
-                }
+                _logger.warning("BigCommerce request failed: %s %s (%s)", method, url, err.__class__.__name__)
+                return self._result(
+                    False, None,
+                    "Unexpected network error while contacting BigCommerce: %s" % err.__class__.__name__,
+                    url, None, {}, payload, attempt, started, state["waited"],
+                )
 
-            if response.status_code in (429, 500, 502, 503, 504) and attempt < retries:
-                retry_after = response.headers.get("Retry-After")
-                if retry_after:
-                    try:
-                        sleep_seconds = float(retry_after)
-                    except (TypeError, ValueError):
-                        sleep_seconds = min(2 ** (attempt + 1), 10)
-                else:
-                    sleep_seconds = min(2 ** (attempt + 1), 10)
-                attempt += 1
-                time.sleep(max(0.2, sleep_seconds))
-                continue
+            status = response.status_code
+            if _can_retry():
+                if status == 429:
+                    attempt += 1
+                    _wait(self._rate_limit_wait(response.headers, attempt))
+                    continue
+                if status in self.RETRYABLE_STATUS and idempotent:
+                    attempt += 1
+                    _wait(min(2 ** attempt, 10))
+                    continue
             break
 
+        self._throttle_if_quota_exhausted(response.headers)
+
         content_type = (response.headers.get("Content-Type") or "").lower()
-        if "application/json" in content_type or "json" in content_type:
+        if "json" in content_type:
             try:
                 response_body = response.json()
             except ValueError:
@@ -123,17 +184,32 @@ class BigCommerceApiClient:
         else:
             response_body = response.text
 
-        return {
-            "success": response.ok,
-            "status_code": response.status_code,
-            "message": self._build_error_message(response, response_body),
-            "url": url,
-            "response_body": response_body,
-            "response_headers": dict(response.headers or {}),
-            "request_payload": payload,
-            "retry_count": attempt,
-            "duration_ms": int((time.monotonic() - started) * 1000),
-        }
+        return self._result(
+            response.ok, status, self._build_error_message(response, response_body), url, response_body,
+            dict(response.headers or {}), payload, attempt, started, state["waited"],
+        )
+
+    def _throttle_if_quota_exhausted(self, headers):
+        """Pause before the next call when BigCommerce says the quota window is used up.
+
+        ``X-Rate-Limit-Requests-Left`` reaching 0 means the next request would be refused with
+        429; waiting for ``X-Rate-Limit-Time-Reset-Ms`` (capped) avoids burning a retry.
+        """
+        lowered = {str(k).lower(): v for k, v in (headers or {}).items()}
+        left = lowered.get("x-rate-limit-requests-left")
+        if left in (None, ""):
+            return
+        try:
+            if int(float(left)) > 0:
+                return
+        except (TypeError, ValueError):
+            return
+        try:
+            reset_ms = float(lowered.get("x-rate-limit-time-reset-ms") or 0)
+        except (TypeError, ValueError):
+            reset_ms = 0
+        if reset_ms > 0:
+            self._sleep(min(reset_ms / 1000.0, self.MAX_WAIT_SECONDS))
 
     def get(self, path, params=None, timeout=None, retries=None):
         """Perform a GET request against BigCommerce."""
@@ -261,7 +337,7 @@ class BigCommerceApiClient:
             missing.append("Store Hash")
         if not (self.instance.api_base_url or "").strip():
             missing.append("API Base URL")
-        if not (self.instance.access_token or "").strip():
+        if not (self.instance.sudo().access_token or "").strip():
             missing.append("Access Token")
         if missing:
             return {

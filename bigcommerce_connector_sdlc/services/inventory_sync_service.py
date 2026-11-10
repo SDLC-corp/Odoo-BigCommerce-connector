@@ -62,8 +62,11 @@ class BigCommerceInventorySyncService:
                 "failed_items": [message],
             }
 
-        bindings = self._get_products_to_import(limit=limit)
-        exported = failed = skipped = 0
+        # Every binding is compared, but only changed quantities are pushed (at most `limit` API
+        # calls per run); the remaining changes go out on the next run. Before 19.0.2.1.0 the same
+        # first `limit` bindings were pushed on every run and the others never.
+        bindings = self._get_products_to_import(limit=None)
+        exported = failed = skipped = unchanged = 0
         failed_items = []
 
         for binding in bindings:
@@ -71,15 +74,21 @@ class BigCommerceInventorySyncService:
             product = binding.product_id or (
                 binding.product_tmpl_id.product_variant_id if binding.product_tmpl_id else False
             )
-            if not product:
+            if not product or product.type == "service":
                 skipped += 1
                 continue
 
             qty = self._get_available_qty(product)
+            if binding.bigcommerce_inventory_known and int(binding.bigcommerce_inventory_level or 0) == qty:
+                unchanged += 1
+                continue
+            if exported + failed >= limit:
+                skipped += 1
+                continue
             push_result = self._push_inventory_update(binding=binding, qty=qty)
             if push_result.get("success"):
                 exported += 1
-                binding.sudo().write({"bigcommerce_inventory_level": qty})
+                binding.sudo().write({"bigcommerce_inventory_level": qty, "bigcommerce_inventory_known": True})
             else:
                 failed += 1
                 msg = push_result.get("message") or "Inventory export failed."
@@ -96,10 +105,11 @@ class BigCommerceInventorySyncService:
 
         message = (
             "Inventory export completed. Total: %(total)s, Exported: %(exported)s, "
-            "Failed: %(failed)s, Skipped: %(skipped)s."
+            "Unchanged: %(unchanged)s, Failed: %(failed)s, Skipped: %(skipped)s."
         ) % {
             "total": len(bindings),
             "exported": exported,
+            "unchanged": unchanged,
             "failed": failed,
             "skipped": skipped,
         }
@@ -118,6 +128,7 @@ class BigCommerceInventorySyncService:
             "message": message,
             "total": len(bindings),
             "exported": exported,
+            "unchanged": unchanged,
             "failed": failed,
             "skipped": skipped,
             "failed_items": failed_items[:5],
@@ -282,14 +293,14 @@ class BigCommerceInventorySyncService:
             remote["remote_id"] = remote_id
             return remote
         self._refresh_template_name_from_remote(binding=binding, remote_result=remote)
-        if remote.get("qty") not in (None, False):
-            binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty")})
+        if remote.get("qty") is not None:
+            binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty"), "bigcommerce_inventory_known": True})
         if not remote.get("tracked", True):
             remote["status"] = "skipped"
             remote["remote_id"] = remote_id
             remote["message"] = "Inventory tracking disabled in BigCommerce."
             return remote
-        if remote.get("qty") in (None, False):
+        if remote.get("qty") is None:
             remote["status"] = "skipped"
             remote["remote_id"] = remote_id
             remote["message"] = "Remote inventory level is empty."
@@ -345,14 +356,14 @@ class BigCommerceInventorySyncService:
             remote["remote_id"] = remote_id
             return remote
         self._refresh_template_name_from_remote(binding=binding, remote_result=remote)
-        if remote.get("qty") not in (None, False):
-            binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty")})
+        if remote.get("qty") is not None:
+            binding.sudo().write({"bigcommerce_inventory_level": remote.get("qty"), "bigcommerce_inventory_known": True})
         if not remote.get("tracked", True):
             remote["status"] = "skipped"
             remote["remote_id"] = remote_id
             remote["message"] = "Variant inventory tracking disabled in BigCommerce."
             return remote
-        if remote.get("qty") in (None, False):
+        if remote.get("qty") is None:
             remote["status"] = "skipped"
             remote["remote_id"] = remote_id
             remote["message"] = "Remote inventory level is empty."
@@ -454,7 +465,7 @@ class BigCommerceInventorySyncService:
 
         raw_qty = data.get("inventory_level")
         qty = None
-        if raw_qty not in (None, False, ""):
+        if raw_qty is not None and raw_qty is not False and raw_qty != "":
             try:
                 qty = int(float(raw_qty))
             except (TypeError, ValueError):
@@ -598,7 +609,7 @@ class BigCommerceInventorySyncService:
 
         raw_qty = payload.get("inventory_level")
         qty = None
-        if raw_qty not in (None, False, ""):
+        if raw_qty is not None and raw_qty is not False and raw_qty != "":
             try:
                 qty = int(float(raw_qty))
             except (TypeError, ValueError):
@@ -624,7 +635,9 @@ class BigCommerceInventorySyncService:
             return {"success": False, "message": "Missing Odoo product for inventory apply."}
         if not product.active:
             return {"success": False, "message": "Linked Odoo product is archived."}
-        if target_qty in (None, False):
+        # 0 is a real level (out of stock); only a missing value is skipped. Before 19.0.2.1.0
+        # "0 in (None, False)" was true, so stock never went down to zero.
+        if target_qty is None or target_qty is False:
             return {"success": False, "message": "Remote inventory level is empty."}
 
         try:
@@ -643,7 +656,26 @@ class BigCommerceInventorySyncService:
                 "delta": 0,
             }
 
-        self.env["stock.quant"].sudo()._update_available_quantity(product, location, delta)
+        if getattr(product, "tracking", "none") not in (False, "none"):
+            return {
+                "success": False,
+                "message": "Product %s is tracked by lot/serial number; its stock is not adjusted "
+                "automatically." % (product.default_code or product.display_name),
+            }
+
+        # A real inventory adjustment (validated stock move to/from the inventory loss location),
+        # so the change appears in the stock moves history and in valuation. Before 19.0.2.1.0
+        # the quant quantity was overwritten directly, leaving no trace.
+        quant_model = self.env["stock.quant"].sudo()
+        quant = quant_model._gather(product, location, strict=True).filtered(
+            lambda q: not q.lot_id and not q.package_id and not q.owner_id
+        )[:1]
+        if not quant:
+            quant = quant_model.create({"product_id": product.id, "location_id": location.id})
+        quant.with_context(inventory_name="BigCommerce stock sync").write(
+            {"inventory_quantity": quant.quantity + delta}
+        )
+        quant.with_context(inventory_name="BigCommerce stock sync")._apply_inventory()
         return {
             "success": True,
             "target_qty": target_qty,
@@ -763,6 +795,8 @@ class BigCommerceInventorySyncService:
                 and b.bigcommerce_product_id in variant_product_ids
             )
         )
+        if limit is None:
+            return filtered
         return filtered[: self._normalize_limit(limit)]
 
     def _get_inventory_location(self):

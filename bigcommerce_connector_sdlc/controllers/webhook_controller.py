@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import hmac
 import json
 import logging
-import hmac
 
 from odoo import http
 from odoo.http import request
@@ -13,7 +13,16 @@ _logger = logging.getLogger(__name__)
 
 
 class BigCommerceWebhookController(http.Controller):
-    """Public webhook controller for BigCommerce inbound events."""
+    """Public webhook endpoint for BigCommerce callbacks.
+
+    Authentication: BigCommerce sends back the custom ``X-Webhook-Secret`` header the connector
+    registered with each hook; it is compared in constant time with every connector of the
+    store hash (a store hash is unique per company only, so several companies may share it).
+    Only an authenticated callback is queued; anything else gets a generic answer and, when the
+    store hash is known, a capped "rejected" trace that is never processed.
+    """
+
+    MAX_BODY_BYTES = 1024 * 1024
 
     @http.route(
         "/bigcommerce/webhook",
@@ -24,90 +33,63 @@ class BigCommerceWebhookController(http.Controller):
         save_session=False,
     )
     def bigcommerce_webhook(self, **kwargs):
-        """Accept webhook payload, persist event, and return HTTP acknowledgment."""
-        raw_body = request.httprequest.get_data(as_text=True) or "{}"
-        headers = dict(request.httprequest.headers or {})
+        """Authenticate, de-duplicate and queue a callback; processing is asynchronous."""
+        httprequest = request.httprequest
+        if (httprequest.content_length or 0) > self.MAX_BODY_BYTES:
+            return request.make_json_response({"success": False, "message": "Payload too large."}, status=413)
+        raw = httprequest.get_data(cache=False) or b"{}"
+        if len(raw) > self.MAX_BODY_BYTES:
+            return request.make_json_response({"success": False, "message": "Payload too large."}, status=413)
+        raw_body = raw.decode("utf-8", errors="replace")
+        headers = dict(httprequest.headers or {})
 
         try:
             payload = json.loads(raw_body)
-            if not isinstance(payload, dict):
-                _logger.warning("BigCommerce webhook rejected: payload JSON is not an object.")
-                return request.make_json_response(
-                    {"success": False, "message": "Malformed payload. JSON object required."},
-                    status=400,
-                )
         except ValueError:
-            _logger.warning("BigCommerce webhook rejected: malformed JSON body.")
+            payload = None
+        if not isinstance(payload, dict):
+            _logger.warning("BigCommerce webhook rejected: body is not a JSON object.")
             return request.make_json_response(
-                {"success": False, "message": "Malformed JSON payload."},
-                status=400,
+                {"success": False, "message": "Malformed payload. JSON object required."}, status=400
             )
 
-        store_hash = self._get_header(headers, "X-BC-Store-Hash")
-        if not store_hash and kwargs.get("store_hash"):
-            store_hash = kwargs.get("store_hash")
+        store_hash = self._resolve_store_hash(kwargs, headers, payload)
         if not store_hash:
-            _logger.warning("BigCommerce webhook rejected: missing store hash.")
-            return request.make_json_response(
-                {"success": False, "message": "Missing store hash."},
-                status=400,
-            )
+            return request.make_json_response({"success": False, "message": "Missing store hash."}, status=400)
 
-        instance = (
+        candidates = (
             request.env["bigcommerce.connector"]
             .sudo()
-            .search([("store_hash", "=", store_hash)], limit=1)
+            .search([("store_hash", "=", store_hash), ("active", "=", True)])
         )
-        if not instance:
-            _logger.warning("BigCommerce webhook rejected: unknown store hash '%s'.", store_hash)
-            return request.make_json_response(
-                {"success": False, "message": "Unknown store hash."},
-                status=404,
-            )
+        if not candidates:
+            _logger.warning("BigCommerce webhook rejected: unknown store hash.")
+            return request.make_json_response({"success": False, "message": "Unknown store hash."}, status=404)
 
         service = BigCommerceWebhookService(request.env)
+        received_secret = (self._get_header(headers, "X-Webhook-Secret") or "").strip()
+        instance = self._match_instance(candidates, received_secret)
+        destination = httprequest.base_url
+
+        if not instance:
+            reason = "Invalid webhook secret." if received_secret else "Missing webhook secret."
+            _logger.warning("BigCommerce webhook rejected for store hash %s: %s", store_hash, reason)
+            for candidate in candidates:
+                service.ingest_rejected_webhook(
+                    instance=candidate, payload=payload, headers=headers, message=reason, destination=destination
+                )
+            return request.make_json_response({"success": False, "message": "Unauthorized."}, status=401)
+
         if not instance.webhook_enabled:
-            _logger.warning("BigCommerce webhook rejected: webhooks disabled for instance '%s'.", instance.id)
             service.ingest_rejected_webhook(
                 instance=instance,
                 payload=payload,
                 headers=headers,
                 message="Webhooks are disabled for this connector.",
-                destination=request.httprequest.url,
+                destination=destination,
             )
             return request.make_json_response(
-                {"success": False, "message": "Webhooks are disabled for this connector."},
-                status=503,
-            )
-
-        expected_secret = (instance.sudo().webhook_secret or "").strip()
-        if not expected_secret:
-            _logger.warning("BigCommerce webhook rejected: instance '%s' has no webhook secret configured.", instance.id)
-            service.ingest_rejected_webhook(
-                instance=instance,
-                payload=payload,
-                headers=headers,
-                message="Webhook secret is not configured.",
-                destination=request.httprequest.url,
-            )
-            return request.make_json_response(
-                {"success": False, "message": "Webhook secret is not configured."},
-                status=503,
-            )
-
-        received_secret = (self._get_header(headers, "X-Webhook-Secret") or "").strip()
-        if not received_secret or not hmac.compare_digest(received_secret, expected_secret):
-            _logger.warning("BigCommerce webhook rejected: invalid custom webhook secret for instance '%s'.", instance.id)
-            service.ingest_rejected_webhook(
-                instance=instance,
-                payload=payload,
-                headers=headers,
-                message="Invalid webhook secret.",
-                destination=request.httprequest.url,
-            )
-            return request.make_json_response(
-                {"success": False, "message": "Invalid webhook secret."},
-                status=401,
+                {"success": False, "message": "Webhooks are disabled for this connector."}, status=503
             )
 
         result = service.ingest_webhook(
@@ -115,10 +97,33 @@ class BigCommerceWebhookController(http.Controller):
             payload=payload,
             headers=headers,
             raw_body=raw_body,
-            destination=request.httprequest.url,
+            destination=destination,
         )
-        status_code = 200 if result.get("success") else 400
-        return request.make_json_response(result, status=status_code)
+        return request.make_json_response(
+            {"success": bool(result.get("success")), "duplicate": bool(result.get("duplicate"))},
+            status=200 if result.get("success") else 400,
+        )
+
+    def _resolve_store_hash(self, kwargs, headers, payload):
+        store_hash = (kwargs.get("store_hash") or "").strip()
+        if not store_hash:
+            store_hash = (self._get_header(headers, "X-BC-Store-Hash") or "").strip()
+        if not store_hash:
+            producer = str(payload.get("producer") or "")
+            if producer.startswith("stores/"):
+                store_hash = producer.split("/", 1)[1].strip()
+        return store_hash.strip("/") or False
+
+    def _match_instance(self, candidates, received_secret):
+        """Connector whose webhook secret equals the received one (constant-time comparison)."""
+        if not received_secret:
+            return candidates.browse()
+        matched = candidates.browse()
+        for candidate in candidates:
+            expected = (candidate.sudo().webhook_secret or "").strip()
+            if expected and hmac.compare_digest(received_secret.encode(), expected.encode()):
+                matched = candidate
+        return matched
 
     def _get_header(self, headers, name):
         if name in headers:

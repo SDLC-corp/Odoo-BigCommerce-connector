@@ -132,21 +132,14 @@ class BigCommerceDashboard(models.AbstractModel):
             if company_ids:
                 quant_domain.append(("company_id", "in", company_ids))
 
-            quant_groups = self.env["stock.quant"].read_group(
-                quant_domain,
-                ["product_id", "quantity:sum", "reserved_quantity:sum"],
-                ["product_id"],
-                lazy=False,
-            )
-            qty_map = {}
-            for group in quant_groups:
-                product_info = group.get("product_id")
-                if not product_info:
-                    continue
-                product_id = product_info[0]
-                quantity = float(group.get("quantity", 0.0) or 0.0)
-                reserved = float(group.get("reserved_quantity", 0.0) or 0.0)
-                qty_map[product_id] = quantity - reserved
+            # _read_group: read_group() is deprecated since Odoo 19 and logs a warning per call.
+            qty_map = {
+                product.id: float(quantity or 0.0) - float(reserved or 0.0)
+                for product, quantity, reserved in self.env["stock.quant"]._read_group(
+                    quant_domain, ["product_id"], ["quantity:sum", "reserved_quantity:sum"]
+                )
+                if product
+            }
 
             low_rows = []
             for product in candidate_products:
@@ -192,29 +185,24 @@ class BigCommerceDashboard(models.AbstractModel):
             ("display_type", "=", False),
             ("product_id", "!=", False),
         ]
-        groups = self.env["sale.order.line"].read_group(
+        groups = self.env["sale.order.line"]._read_group(
             line_domain,
-            ["product_id", "product_uom_qty:sum"],
             ["product_id"],
+            ["product_uom_qty:sum"],
             limit=8,
-            orderby="product_uom_qty desc",
+            order="product_uom_qty:sum desc",
         )
 
         items = []
-        product_ids = [group["product_id"][0] for group in groups if group.get("product_id")]
-        product_map = {product.id: product for product in self.env["product.product"].browse(product_ids)}
-        for group in groups:
-            product_info = group.get("product_id")
-            if not product_info:
+        for product, qty in groups:
+            if not product:
                 continue
-            product_id = product_info[0]
-            product = product_map.get(product_id)
             items.append(
                 {
-                    "product_id": product_id,
-                    "name": product.display_name if product else product_info[1],
-                    "sku": product.default_code if product else "",
-                    "qty": float(group.get("product_uom_qty", 0.0)),
+                    "product_id": product.id,
+                    "name": product.display_name,
+                    "sku": product.default_code or "",
+                    "qty": float(qty or 0.0),
                 }
             )
 
@@ -616,6 +604,10 @@ class BigCommerceDashboard(models.AbstractModel):
             "failed_export_count": self.env["bigcommerce.sync.log"].search_count(
                 log_domain + [("status", "=", "failed"), ("operation_type", "in", export_ops)]
             ),
+            "open_exceptions": self.env["bigcommerce.order.binding"].search_count(
+                binding_domain + [("needs_attention", "=", True)]
+            )
+            + self.env["bigcommerce.webhook.event"].search_count(binding_domain + [("status", "=", "failed")]),
         }
 
         ops_domain = binding_domain + [("create_date", ">=", date_from_str)]
@@ -680,13 +672,15 @@ class BigCommerceDashboard(models.AbstractModel):
             for log in recent_logs
         ]
 
-        sync_groups = self.env["bigcommerce.sync.log"].read_group(
-            sync_log_domain + [("status", "in", ("success", "failed"))],
-            ["status"],
-            ["status"],
+        status_counts = dict(
+            self.env["bigcommerce.sync.log"]._read_group(
+                sync_log_domain + [("status", "in", ("success", "failed"))],
+                ["status"],
+                ["__count"],
+            )
         )
-        success_count = sum(group.get("status_count", 0) for group in sync_groups if group.get("status") == "success")
-        failed_count = sum(group.get("status_count", 0) for group in sync_groups if group.get("status") == "failed")
+        success_count = status_counts.get("success", 0)
+        failed_count = status_counts.get("failed", 0)
         total_done = success_count + failed_count
         if total_done:
             success_rate = round((success_count * 100.0 / total_done), 1)
@@ -791,30 +785,23 @@ class BigCommerceDashboard(models.AbstractModel):
             "stale_instances": stale_instances,
         }
 
-        # lazy=False: one row per (day, status) with its "__count"; a lazy read_group
-        # groups by the day only and drops "status", so every trend bar stayed 0.
-        day_groups = self.env["bigcommerce.sync.log"].read_group(
+        # One row per (day, status); days come back as date objects in chronological order.
+        day_groups = self.env["bigcommerce.sync.log"]._read_group(
             sync_log_domain + [("status", "in", ("success", "failed"))],
-            ["status"],
             ["create_date:day", "status"],
-            orderby="create_date:day asc",
-            lazy=False,
+            ["__count"],
+            order="create_date:day asc",
         )
         trend_map = {}
-        for group in day_groups:
-            date_key = group.get("create_date:day")
-            if not date_key:
+        for day, status, count in day_groups:
+            if not day:
                 continue
             bucket = trend_map.setdefault(
-                date_key,
-                {"date": str(date_key), "success": 0, "failed": 0},
+                day,
+                {"date": day.strftime("%d %b %Y"), "success": 0, "failed": 0},
             )
-            if group.get("status") == "success":
-                bucket["success"] = group.get("__count", 0)
-            if group.get("status") == "failed":
-                bucket["failed"] = group.get("__count", 0)
-
-        # Rows arrive in day order; the labels ("21 Oct 2026") do not sort chronologically.
+            if status in ("success", "failed"):
+                bucket[status] = count
         trends = list(trend_map.values())
 
         return {

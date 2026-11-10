@@ -10,3 +10,4 @@ from . import bigcommerce_sync_log
 from . import bigcommerce_webhook_event
 from . import bigcommerce_webhook_subscription
 from . import bigcommerce_dashboard
+from . import stock_picking
