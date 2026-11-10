@@ -17,6 +17,13 @@ class BigCommerceCustomerBinding(models.Model):
         ondelete="cascade",
         index=True,
     )
+    company_id = fields.Many2one(
+        "res.company",
+        related="instance_id.company_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     partner_id = fields.Many2one("res.partner", index=True, ondelete="set null")
     bigcommerce_customer_id = fields.Char(index=True)
     email = fields.Char(index=True)
