@@ -1,52 +1,26 @@
 # -*- coding: utf-8 -*-
 {
-    "version": "20.0.2.0.0",
+    "version": "20.0.2.1.0",
     "name": "BigCommerce Connector for Odoo",
-    "summary": "Connect your BigCommerce store with Odoo ERP. Sync products, orders, inventory, and customers in real time.",
+    "summary": "Import BigCommerce orders, products and customers into Odoo, sync stock one way, export shipments with tracking, with webhooks and an exception queue.",
     "description": """
-    BigCommerce Connector
-    =====================
-    
-    This module connects your BigCommerce store to Odoo, letting you manage all your 
-    eCommerce operations from your ERP system. No more switching between platforms for 
-    orders, inventory, and customer data.
-    
-    What This Does
-    ---------------
-    • Import and export products with variants and images
-    • Sync customer records automatically
-    • Pull orders from BigCommerce into Odoo as sales orders
-    • Keep inventory levels in sync between both systems
-    • Track shipments and update order status
-    • Monitor all sync activities with detailed logs
-    • Receive real-time updates via BigCommerce webhooks
-    
-    How It Works
-    -----------
-    Setup is straightforward. Enter your BigCommerce API credentials, and the connector 
-    handles the rest. Products, customers, and orders sync automatically on a schedule, 
-    and you can trigger manual syncs whenever you need them. Webhooks let BigCommerce 
-    notify Odoo about changes instantly.
-    
-    Field Mapping
-    -----------
-    Map your custom BigCommerce fields to Odoo fields however you need. The built-in 
-    mapping wizard lets you test your mappings before running live syncs.
-    
-    Webhooks & Real-Time Updates
-    ---------------------------
-    Set up webhooks to receive updates the moment something changes in BigCommerce. 
-    No more waiting for scheduled syncs.
-    
-    Operation Logs
-    -----------
-    Every sync operation gets logged with full details. See what was imported, what 
-    failed, and why. Makes troubleshooting fast and easy.
-    
-    Multi-Store Support
-    ----------------
-    Run multiple BigCommerce stores? Manage them all from one Odoo instance. Each 
-    store gets its own configuration.
+BigCommerce Connector
+=====================
+
+* Incremental, idempotent order import (orders modified since the last run) as Odoo sales orders,
+  with shipping, discounts, coupons and status-based confirmation/cancellation.
+* Product import with BigCommerce options as Odoo attributes and variants; export of new or changed
+  goods; category import; customer import and export (customers of the connector company only).
+* Inventory sync in the direction of the chosen inventory master (traceable inventory adjustments on
+  import; only changed quantities on export).
+* Shipment export per validated delivery (partial deliveries included, exactly once).
+* Authenticated webhooks with re-delivery protection, back-off retries and a rejected-callback trace.
+* Exception queue (failed imports/exports, total or currency mismatch, unmatched products) with
+  one-click re-sync; sync logs with automatic purge; dashboard.
+* Three roles (read-only user, manager, administrator), credentials visible to administrators only,
+  multi-company record rules.
+
+Tested on Odoo 19 Community against mocked BigCommerce API responses only; see the README.
     """,
     "category": "eCommerce",
     "author": "SDLC Corp",
@@ -81,6 +55,7 @@
         "views/order_binding_views.xml",
         "views/bigcommerce_log_views.xml",
         "views/bigcommerce_webhook_views.xml",
+        "views/stock_picking_views.xml",
         "views/menu_views.xml",
     ],
     "assets": {

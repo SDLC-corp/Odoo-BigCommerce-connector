@@ -126,6 +126,10 @@
             <field name="res_model">bigcommerce.sync.log</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No sync activity recorded yet.</p>
+                <p>Every import, export, webhook and connection test writes a log line here. Run <b>Test Connection</b> or a sync from a connector to see the first entries. Logs older than the connector's retention period are purged daily.</p>
+            </field>
         </record>
 
         <record id="action_bigcommerce_inventory_sync_log" model="ir.actions.act_window">
@@ -135,6 +139,10 @@
             <field name="search_view_id" ref="view_bigcommerce_sync_log_search"/>
             <field name="domain">[('operation_type', 'in', ['inventory_import', 'inventory_export'])]</field>
             <field name="context">{'search_default_filter_status_failed': 0}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No inventory sync has run yet.</p>
+                <p>Inventory imports (BigCommerce master) and exports (Odoo master) are logged here. Run <b>Sync Inventory</b> on a connector.</p>
+            </field>
         </record>
     </data>
 </odoo>

@@ -6,6 +6,10 @@
             <field name="res_model">stock.picking</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('picking_type_code', '=', 'outgoing'), ('sale_id', '!=', False), ('sale_id.origin', 'ilike', 'BigCommerce #')]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No deliveries for BigCommerce orders yet.</p>
+                <p>Deliveries of imported BigCommerce orders appear here.</p>
+            </field>
         </record>
 
         <record id="action_bigcommerce_tracking" model="ir.actions.act_window">
@@ -13,6 +17,10 @@
             <field name="res_model">stock.picking</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('picking_type_code', '=', 'outgoing'), ('state', '=', 'done'), ('sale_id', '!=', False), ('sale_id.origin', 'ilike', 'BigCommerce #')]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No shipped BigCommerce deliveries yet.</p>
+                <p>Validated deliveries with a tracking number are exported as BigCommerce shipments.</p>
+            </field>
         </record>
 
         <menuitem
@@ -20,7 +28,7 @@
             name="BigCommerce"
             sequence="35"
             action="bigcommerce_connector_sdlc.action_bigcommerce_dashboard"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -29,7 +37,7 @@
             parent="menu_bigcommerce_root"
             sequence="5"
             action="bigcommerce_connector_sdlc.action_bigcommerce_dashboard"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -38,7 +46,31 @@
             parent="menu_bigcommerce_root"
             sequence="10"
             action="bigcommerce_connector_sdlc.action_bigcommerce_connector"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
+        />
+
+        <menuitem
+            id="menu_bigcommerce_exceptions"
+            name="Exceptions"
+            parent="menu_bigcommerce_root"
+            sequence="12"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
+        />
+        <menuitem
+            id="menu_bigcommerce_order_exceptions"
+            name="Order Exceptions"
+            parent="menu_bigcommerce_exceptions"
+            sequence="10"
+            action="bigcommerce_connector_sdlc.action_bigcommerce_order_exceptions"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
+        />
+        <menuitem
+            id="menu_bigcommerce_webhook_exceptions"
+            name="Failed Webhook Events"
+            parent="menu_bigcommerce_exceptions"
+            sequence="20"
+            action="bigcommerce_connector_sdlc.action_bigcommerce_webhook_exceptions"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -46,7 +78,7 @@
             name="Field Mappings"
             parent="menu_bigcommerce_root"
             sequence="15"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
         />
         <record id="menu_bigcommerce_field_mappings" model="ir.ui.menu">
             <field name="action" eval="False"/>
@@ -57,7 +89,7 @@
             parent="menu_bigcommerce_field_mappings"
             sequence="1"
             action="bigcommerce_connector_sdlc.action_bigcommerce_field_mapping_product"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
         />
         <menuitem
             id="menu_bigcommerce_field_mappings_customer"
@@ -65,7 +97,7 @@
             parent="menu_bigcommerce_field_mappings"
             sequence="2"
             action="bigcommerce_connector_sdlc.action_bigcommerce_field_mapping_customer"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
         />
         <menuitem
             id="menu_bigcommerce_field_mappings_order"
@@ -73,7 +105,7 @@
             parent="menu_bigcommerce_field_mappings"
             sequence="3"
             action="bigcommerce_connector_sdlc.action_bigcommerce_field_mapping_order"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
         />
         <menuitem
             id="menu_bigcommerce_field_mappings_category"
@@ -81,7 +113,7 @@
             parent="menu_bigcommerce_field_mappings"
             sequence="4"
             action="bigcommerce_connector_sdlc.action_bigcommerce_field_mapping_category"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
         />
 
         <menuitem
@@ -89,7 +121,7 @@
             name="Bindings"
             parent="menu_bigcommerce_root"
             sequence="30"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -97,7 +129,7 @@
             name="Webhooks"
             parent="menu_bigcommerce_root"
             sequence="40"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -106,7 +138,7 @@
             parent="menu_bigcommerce_root"
             sequence="45"
             action="bigcommerce_connector_sdlc.action_bigcommerce_inventory_binding"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -114,7 +146,7 @@
             name="Shipping"
             parent="menu_bigcommerce_root"
             sequence="47"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -122,7 +154,7 @@
             name="Logs"
             parent="menu_bigcommerce_root"
             sequence="50"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -131,7 +163,7 @@
             parent="menu_bigcommerce_bindings"
             sequence="10"
             action="bigcommerce_connector_sdlc.action_bigcommerce_product_binding"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -140,7 +172,7 @@
             parent="menu_bigcommerce_bindings"
             sequence="15"
             action="bigcommerce_connector_sdlc.action_bigcommerce_category_binding"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -149,7 +181,7 @@
             parent="menu_bigcommerce_bindings"
             sequence="20"
             action="bigcommerce_connector_sdlc.action_bigcommerce_customer_binding"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -158,7 +190,7 @@
             parent="menu_bigcommerce_bindings"
             sequence="30"
             action="bigcommerce_connector_sdlc.action_bigcommerce_order_binding"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -167,7 +199,7 @@
             parent="menu_bigcommerce_webhooks"
             sequence="10"
             action="bigcommerce_connector_sdlc.action_bigcommerce_webhook_event"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -176,7 +208,7 @@
             parent="menu_bigcommerce_webhooks"
             sequence="20"
             action="bigcommerce_connector_sdlc.action_bigcommerce_webhook_subscription"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -185,7 +217,7 @@
             parent="menu_bigcommerce_logs"
             sequence="15"
             action="bigcommerce_connector_sdlc.action_bigcommerce_inventory_sync_log"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -194,7 +226,7 @@
             parent="menu_bigcommerce_shipping"
             sequence="10"
             action="bigcommerce_connector_sdlc.action_bigcommerce_delivery_orders"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <menuitem
@@ -203,7 +235,7 @@
             parent="menu_bigcommerce_shipping"
             sequence="20"
             action="bigcommerce_connector_sdlc.action_bigcommerce_tracking"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
 
         <!-- Shipping menu hidden by default: shipment export still works from connector actions/automation -->
@@ -223,7 +255,7 @@
             parent="menu_bigcommerce_logs"
             sequence="10"
             action="bigcommerce_connector_sdlc.action_bigcommerce_sync_log"
-            groups="base.group_user"
+            groups="bigcommerce_connector_sdlc.group_bigcommerce_user"
         />
     </data>
 </odoo>

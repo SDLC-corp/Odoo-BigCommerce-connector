@@ -2,6 +2,7 @@ import { registry } from "@web/core/registry";
 import { Component, onMounted, onPatched, onWillUnmount, proxy, signal, useProps } from "@odoo/owl";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 import { rpc } from "@web/core/network/rpc";
+import { useService } from "@web/core/utils/hooks";
 
 export class BigCommerceDashboard extends Component {
     static template = "bigcommerce_dashboard_template";
@@ -12,6 +13,7 @@ export class BigCommerceDashboard extends Component {
         this._quickActionRequestSeq = 0;
         this._autoRefreshTimer = null;
         this.chatMessagesRef = signal.ref();
+        this.actionService = useService("action");
         this.state = proxy({
             loading: false,
             rangeDays: "7",
@@ -44,6 +46,10 @@ export class BigCommerceDashboard extends Component {
                 container.scrollTop = container.scrollHeight;
             }
         });
+    }
+
+    openExceptions() {
+        this.actionService.doAction("bigcommerce_connector_sdlc.action_bigcommerce_order_exceptions");
     }
 
     _emptyData() {
