@@ -18,13 +18,19 @@ class BigCommerceProductBinding(models.Model):
         ondelete="cascade",
         index=True,
     )
-    company_id = fields.Many2one(related="instance_id.company_id", store=True, readonly=True)
+    company_id = fields.Many2one(related="instance_id.company_id", store=True, readonly=True, index=True)
     product_tmpl_id = fields.Many2one("product.template", index=True, ondelete="set null")
     product_id = fields.Many2one("product.product", index=True, ondelete="set null")
     bigcommerce_product_id = fields.Char(index=True)
     bigcommerce_variant_id = fields.Char(index=True)
     bigcommerce_sku = fields.Char(index=True)
     bigcommerce_inventory_level = fields.Float(string="BigCommerce Stock")
+    bigcommerce_inventory_known = fields.Boolean(
+        string="BigCommerce Stock Known",
+        copy=False,
+        help="Set once the BigCommerce stock level was read or written by the connector; inventory "
+        "export only pushes quantities that differ from it.",
+    )
     bigcommerce_is_featured = fields.Boolean(string="Featured")
     bigcommerce_is_visible = fields.Boolean(string="Visible")
     odoo_category_name = fields.Char(string="Categories", compute="_compute_product_metrics")
@@ -56,16 +62,18 @@ class BigCommerceProductBinding(models.Model):
         "BigCommerce variant id must be unique per instance.",
     )
 
-    def name_get(self):
-        result = []
+    @api.depends("bigcommerce_sku", "bigcommerce_variant_id", "bigcommerce_product_id", "product_id", "product_tmpl_id")
+    def _compute_display_name(self):
+        # name_get() is ignored since Odoo 17; the label is computed here instead.
         for rec in self:
-            label = rec.bigcommerce_sku or rec.bigcommerce_variant_id or rec.bigcommerce_product_id or ("Binding %s" % rec.id)
+            label = rec.bigcommerce_sku or rec.bigcommerce_variant_id or rec.bigcommerce_product_id or (
+                "Binding %s" % rec.id
+            )
             if rec.product_id:
                 label = "%s | %s" % (label, rec.product_id.display_name)
             elif rec.product_tmpl_id:
                 label = "%s | %s" % (label, rec.product_tmpl_id.display_name)
-            result.append((rec.id, label))
-        return result
+            rec.display_name = label
 
     @api.depends(
         "bigcommerce_sku",

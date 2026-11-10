@@ -16,6 +16,13 @@ class BigCommerceWebhookSubscription(models.Model):
         ondelete="cascade",
         index=True,
     )
+    company_id = fields.Many2one(
+        "res.company",
+        related="instance_id.company_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     remote_webhook_id = fields.Char(index=True)
     scope = fields.Char(required=True, index=True)
     destination = fields.Char(required=True)

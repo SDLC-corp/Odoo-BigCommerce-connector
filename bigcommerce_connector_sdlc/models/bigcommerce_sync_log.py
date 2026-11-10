@@ -17,6 +17,13 @@ class BigCommerceSyncLog(models.Model):
         index=True,
         ondelete="cascade",
     )
+    company_id = fields.Many2one(
+        "res.company",
+        related="instance_id.company_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     operation_type = fields.Selection(
         selection=[
             ("connection_test", "Connection Test"),

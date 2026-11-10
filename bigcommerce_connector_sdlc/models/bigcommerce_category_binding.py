@@ -17,6 +17,13 @@ class BigCommerceCategoryBinding(models.Model):
         ondelete="cascade",
         index=True,
     )
+    company_id = fields.Many2one(
+        "res.company",
+        related="instance_id.company_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     category_id = fields.Many2one("product.category", required=True, ondelete="cascade", index=True)
     bigcommerce_category_id = fields.Char(required=True, index=True)
     bigcommerce_parent_category_id = fields.Char(index=True)

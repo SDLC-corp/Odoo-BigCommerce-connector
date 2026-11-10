@@ -106,7 +106,7 @@ class BigCommerceFieldMapping(models.Model):
         domain="[('connector_id', '=', connector_id), ('mapping_type', '=', mapping_type), ('active', '=', True)]",
         ondelete="restrict",
     )
-    bigcommerce_field_name = fields.Selection(selection=lambda self: self._selection_bigcommerce_fields(), required=True, index=True, string="BigCommerce Field")
+    bigcommerce_field_name = fields.Selection(selection=lambda self: self._selection_bigcommerce_fields(), required=True, index=True, string="BigCommerce Field Key")
     bigcommerce_product_field = fields.Selection(
         selection=_BIGCOMMERCE_FIELDS_BY_TYPE["product"],
         compute="_compute_bigcommerce_selector_fields",

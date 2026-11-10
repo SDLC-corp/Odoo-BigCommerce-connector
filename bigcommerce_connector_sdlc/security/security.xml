@@ -1,26 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
-        <record id="module_category_bigcommerce" model="ir.module.category">
-            <field name="name">BigCommerce</field>
-            <field name="sequence">30</field>
-        </record>
+    <!--
+        Three roles (each implies the previous one):
+        * User          - reads connectors (without credentials), bindings, logs and the dashboard.
+        * Manager       - runs syncs, retries webhook events, re-syncs orders, triages exceptions.
+        * Administrator - creates/configures connectors, sees and edits credentials, manages
+                          webhooks and field mappings. Settings administrators get it implicitly.
+    -->
+    <record id="module_category_bigcommerce" model="ir.module.category">
+        <field name="name">BigCommerce</field>
+        <field name="sequence">30</field>
+    </record>
 
-        <record id="res_groups_privilege_bigcommerce" model="res.groups.privilege">
-            <field name="name">BigCommerce</field>
-            <field name="category_id" ref="bigcommerce_connector_sdlc.module_category_bigcommerce"/>
-        </record>
+    <record id="res_groups_privilege_bigcommerce" model="res.groups.privilege">
+        <field name="name">BigCommerce</field>
+        <field name="category_id" ref="bigcommerce_connector_sdlc.module_category_bigcommerce"/>
+    </record>
 
-        <record id="group_bigcommerce_user" model="res.groups">
-            <field name="name">BigCommerce User</field>
-            <field name="privilege_id" ref="bigcommerce_connector_sdlc.res_groups_privilege_bigcommerce"/>
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        </record>
+    <record id="group_bigcommerce_user" model="res.groups">
+        <field name="name">BigCommerce User (Read Only)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="bigcommerce_connector_sdlc.res_groups_privilege_bigcommerce"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
 
-        <record id="group_bigcommerce_manager" model="res.groups">
-            <field name="name">BigCommerce Manager</field>
-            <field name="privilege_id" ref="bigcommerce_connector_sdlc.res_groups_privilege_bigcommerce"/>
-            <field name="implied_ids" eval="[(4, ref('bigcommerce_connector_sdlc.group_bigcommerce_user'))]"/>
-        </record>
-    </data>
+    <record id="group_bigcommerce_manager" model="res.groups">
+        <field name="name">BigCommerce Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="bigcommerce_connector_sdlc.res_groups_privilege_bigcommerce"/>
+        <field name="implied_ids" eval="[(4, ref('bigcommerce_connector_sdlc.group_bigcommerce_user'))]"/>
+    </record>
+
+    <record id="group_bigcommerce_admin" model="res.groups">
+        <field name="name">BigCommerce Administrator</field>
+        <field name="sequence">30</field>
+        <field name="privilege_id" ref="bigcommerce_connector_sdlc.res_groups_privilege_bigcommerce"/>
+        <field name="implied_ids" eval="[(4, ref('bigcommerce_connector_sdlc.group_bigcommerce_manager'))]"/>
+    </record>
+
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('bigcommerce_connector_sdlc.group_bigcommerce_admin'))]"/>
+    </record>
+
+    <!-- Multi-company isolation (global rules: they also bind administrators). -->
+    <record id="rule_bigcommerce_connector_company" model="ir.rule">
+        <field name="name">BigCommerce connector: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_connector"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_product_binding_company" model="ir.rule">
+        <field name="name">BigCommerce product binding: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_product_binding"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_category_binding_company" model="ir.rule">
+        <field name="name">BigCommerce category binding: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_category_binding"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_customer_binding_company" model="ir.rule">
+        <field name="name">BigCommerce customer binding: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_customer_binding"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_order_binding_company" model="ir.rule">
+        <field name="name">BigCommerce order binding: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_order_binding"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_sync_log_company" model="ir.rule">
+        <field name="name">BigCommerce sync log: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_sync_log"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_webhook_event_company" model="ir.rule">
+        <field name="name">BigCommerce webhook event: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_webhook_event"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_webhook_subscription_company" model="ir.rule">
+        <field name="name">BigCommerce webhook subscription: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_webhook_subscription"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_field_mapping_company" model="ir.rule">
+        <field name="name">BigCommerce field mapping: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_field_mapping"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_bigcommerce_field_company" model="ir.rule">
+        <field name="name">BigCommerce field catalog: company isolation</field>
+        <field name="model_id" ref="model_bigcommerce_field"/>
+        <field name="domain_force">[('connector_id.company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>
