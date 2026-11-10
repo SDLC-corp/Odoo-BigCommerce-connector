@@ -23,70 +23,41 @@
             <field name="arch" type="xml">
                 <form string="BigCommerce Connector">
                     <header>
-                        <button
-                            name="action_test_connection"
-                            string="Test Connection"
-                            type="object"
-                            class="oe_highlight"
-                        />
-                        <button
-                            name="action_sync_products"
-                            string="Sync Products"
-                            type="object"
-                        />
-                        <button
-                            name="action_sync_categories"
-                            string="Sync Categories"
-                            type="object"
-                        />
-                        <button
-                            name="action_sync_customers"
-                            string="Sync Customers"
-                            type="object"
-                        />
-                        <button
-                            name="action_export_customers"
-                            string="Export Customers"
-                            type="object"
-                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                        />
-                        <button
-                            name="action_sync_orders"
-                            string="Sync Orders"
-                            type="object"
-                        />
-                        <button
-                            name="action_export_products"
-                            string="Export Products"
-                            type="object"
-                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                        />
-                        <button
-                            name="action_sync_inventory"
-                            string="Sync Inventory"
-                            type="object"
-                        />
-                        <button
-                            name="action_export_shipments"
-                            string="Export Shipments"
-                            type="object"
-                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                        />
-                        <button
-                            name="action_process_webhooks"
-                            string="Process Webhooks"
-                            type="object"
-                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                        />
-                        <button
-                            name="action_validate_field_mappings"
-                            string="Validate Field Mappings"
-                            type="object"
-                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
-                        />
+                        <button name="action_test_connection" string="Test Connection" type="object"
+                                class="oe_highlight" groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_sync_orders" string="Sync Orders" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_sync_products" string="Sync Products" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_sync_categories" string="Sync Categories" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_sync_customers" string="Sync Customers" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_sync_inventory" string="Sync Inventory" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
+                                help="Imports BigCommerce stock levels, or exports Odoo quantities when the Inventory Master is Odoo."/>
+                        <button name="action_export_shipments" string="Export Shipments" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_process_webhooks" string="Process Webhooks" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                        <button name="action_export_products" string="Export Products" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
+                                help="Creates or updates new and changed saleable goods of this company in BigCommerce."/>
+                        <button name="action_export_customers" string="Export Customers" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
+                                help="Creates or updates customers (contacts with a sale history) of this company in BigCommerce."/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,connected,error"/>
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_exceptions" type="object" class="oe_stat_button"
+                                    icon="fa-exclamation-triangle">
+                                <field name="dashboard_exception_count" widget="statinfo" string="Exceptions"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1><field name="name" placeholder="BigCommerce Store - US"/></h1>
+                        </div>
                         <notebook>
                             <page string="Dashboard">
                                 <group>
@@ -107,7 +78,6 @@
                             <page string="General">
                                 <group>
                                     <group>
-                                        <field name="name" placeholder="BigCommerce Store - US"/>
                                         <field name="active"/>
                                         <field name="company_id"/>
                                     </group>
@@ -150,7 +120,6 @@
                                         <field
                                             name="webhook_secret"
                                             password="True"
-                                            groups="base.group_system"
                                             placeholder="Generated shared secret for webhook header validation"
                                         />
                                         <button
@@ -158,36 +127,35 @@
                                             type="object"
                                             string="Generate Secret"
                                             class="oe_link"
-                                            groups="base.group_system"
+                                            groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
+                                            confirm="A new secret invalidates the one registered in BigCommerce: register the webhooks again afterwards. Continue?"
                                         />
                                     </group>
                                 </group>
-                                <group string="Webhook Actions">
+                                <group string="Webhook Actions" groups="bigcommerce_connector_sdlc.group_bigcommerce_admin">
                                     <group>
                                         <button
                                             name="action_register_webhooks"
                                             string="Register Webhooks"
                                             type="object"
                                             class="oe_highlight"
-                                            groups="base.group_user"
                                         />
                                         <button
                                             name="action_sync_webhooks_status"
                                             string="Sync Webhooks"
                                             type="object"
-                                            groups="base.group_user"
                                         />
                                         <button
                                             name="action_delete_webhooks"
                                             string="Delete Webhooks"
                                             type="object"
-                                            groups="base.group_user"
+                                            confirm="Delete this connector's webhooks in BigCommerce? Real-time updates stop until they are registered again."
                                         />
                                         <button
                                             name="action_send_test_webhook_event"
                                             string="Send Test Event"
                                             type="object"
-                                            groups="base.group_user"
+                                            groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
                                         />
                                     </group>
                                 </group>
@@ -236,14 +204,26 @@
                                         <field name="sync_limit_webhook"/>
                                     </group>
                                 </group>
+                                <group>
+                                    <group string="Incremental Import">
+                                        <field name="order_sync_checkpoint"/>
+                                        <field name="product_sync_checkpoint"/>
+                                        <field name="customer_sync_checkpoint"/>
+                                    </group>
+                                    <group string="Operations">
+                                        <field name="webhook_max_retries"/>
+                                        <field name="log_retention_days"/>
+                                        <field name="order_total_tolerance"/>
+                                    </group>
+                                </group>
                             </page>
                             <page string="AI Assistant">
                                 <group>
                                     <group>
                                         <field name="ai_chat_enabled"/>
-                                        <field name="gemini_model" placeholder="gemini-1.5-flash"/>
+                                        <field name="gemini_model" placeholder="gemini-2.5-flash"/>
                                     </group>
-                                    <group groups="base.group_system">
+                                    <group groups="bigcommerce_connector_sdlc.group_bigcommerce_admin">
                                         <field
                                             name="gemini_api_key"
                                             password="True"
@@ -258,7 +238,7 @@
                                     />
                                 </group>
                             </page>
-                            <page string="Field Mapping" groups="base.group_user">
+                            <page string="Field Mapping" groups="bigcommerce_connector_sdlc.group_bigcommerce_admin">
                                 <group>
                                     <button
                                         name="action_validate_field_mappings"
@@ -327,6 +307,11 @@
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create your first BigCommerce connector.
+                </p>
+                <p>
+                    A BigCommerce administrator enters the store hash and an API account access token,
+                    then clicks <b>Test Connection</b>. Credentials are only visible to BigCommerce
+                    administrators.
                 </p>
             </field>
         </record>

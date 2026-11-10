@@ -5,7 +5,12 @@
             <field name="name">bigcommerce.order.binding.list</field>
             <field name="model">bigcommerce.order.binding</field>
             <field name="arch" type="xml">
-                <list string="Order Bindings">
+                <list string="Order Bindings" decoration-danger="sync_state == 'error'"
+                      decoration-warning="needs_attention and sync_state != 'error'">
+                    <header>
+                        <button name="action_resync_from_bigcommerce" string="Re-sync from BigCommerce" type="object"
+                                groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                    </header>
                     <field name="instance_id"/>
                     <field name="bigcommerce_order_number"/>
                     <field name="sale_order_id"/>
@@ -20,6 +25,8 @@
                     <field name="sale_order_date" string="Order Date"/>
                     <field name="imported_at"/>
                     <field name="exported_at" optional="hide"/>
+                    <field name="needs_attention" column_invisible="1"/>
+                    <field name="exception_reason" optional="show"/>
                 </list>
             </field>
         </record>
@@ -29,7 +36,14 @@
             <field name="model">bigcommerce.order.binding</field>
             <field name="arch" type="xml">
                 <form string="Order Binding">
+                    <header>
+                        <button name="action_resync_from_bigcommerce" string="Re-sync from BigCommerce" type="object"
+                                class="oe_highlight" groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"/>
+                    </header>
                     <sheet>
+                        <div class="alert alert-warning" role="alert" invisible="not needs_attention">
+                            <strong>Needs attention:</strong> <field name="exception_reason" readonly="1" class="d-inline"/>
+                        </div>
                         <group>
                             <group>
                                 <field name="instance_id"/>
@@ -42,6 +56,19 @@
                                 <field name="bigcommerce_order_number"/>
                                 <field name="imported_at" readonly="1"/>
                                 <field name="exported_at" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Reconciliation">
+                            <group>
+                                <field name="bigcommerce_total_display" string="BigCommerce Total"/>
+                                <field name="currency_id" invisible="1"/>
+                                <field name="sale_order_amount_total"/>
+                            </group>
+                            <group>
+                                <field name="amount_mismatch"/>
+                                <field name="currency_mismatch"/>
+                                <field name="has_placeholder_lines"/>
+                                <field name="needs_attention" invisible="1"/>
                             </group>
                         </group>
                         <group string="Error">
@@ -71,6 +98,10 @@
                     <filter name="filter_state_error" string="Error" domain="[('sync_state', '=', 'error')]"/>
                     <filter name="filter_missing_sale_order" string="Missing Sale Order" domain="[('sale_order_id', '=', False)]"/>
                     <separator/>
+                    <filter name="filter_needs_attention" string="Needs Attention" domain="[('needs_attention', '=', True)]"/>
+                    <filter name="filter_amount_mismatch" string="Total Mismatch" domain="[('amount_mismatch', '=', True)]"/>
+                    <filter name="filter_placeholder" string="Unmatched Products" domain="[('has_placeholder_lines', '=', True)]"/>
+                    <separator/>
                     <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
                         <filter name="group_by_state" string="Sync State" context="{'group_by': 'sync_state'}"/>
@@ -86,6 +117,28 @@
             <field name="res_model">bigcommerce.order.binding</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_bigcommerce_order_binding_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No BigCommerce orders imported yet.</p>
+                <p>Run <b>Sync Orders</b> on a connector, or enable automatic order import. Only orders modified after the connector's checkpoint are read, oldest first.</p>
+            </field>
         </record>
+
+        <record id="action_bigcommerce_order_exceptions" model="ir.actions.act_window">
+            <field name="name">Order Exceptions</field>
+            <field name="res_model">bigcommerce.order.binding</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_order_binding_search"/>
+            <field name="context">{'search_default_filter_needs_attention': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No order needs attention.</p>
+                <p>
+                    Orders land here when their import or shipment export failed, when the Odoo total differs from
+                    the BigCommerce total by more than the connector tolerance, when BigCommerce charged in another
+                    currency, or when a line could not be matched to an Odoo product. Fix the cause, then use
+                    <b>Re-sync from BigCommerce</b>.
+                </p>
+            </field>
+        </record>
+
     </data>
 </odoo>

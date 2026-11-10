@@ -60,6 +60,10 @@
                 </div>
 
                 <div class="bc-kpis">
+                    <div class="bc-card soft-rose" role="button" style="cursor: pointer;" title="Open the exception queue" t-on-click="openExceptions">
+                        <div class="bc-label">Open Exceptions</div>
+                        <div class="bc-value"><t t-esc="state.data.totals.open_exceptions || 0"/></div>
+                    </div>
                     <div class="bc-card soft-blue">
                         <div class="bc-label">Active Instances</div>
                         <div class="bc-value"><t t-esc="state.data.totals.active_instances || 0"/></div>

@@ -73,6 +73,10 @@
             <field name="res_model">bigcommerce.customer.binding</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_bigcommerce_customer_binding_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No customers linked yet.</p>
+                <p>Run <b>Sync Customers</b> on a connector; customers of imported orders are linked automatically too.</p>
+            </field>
         </record>
     </data>
 </odoo>

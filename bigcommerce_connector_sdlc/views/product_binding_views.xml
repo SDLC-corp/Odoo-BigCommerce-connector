@@ -106,6 +106,10 @@
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_bigcommerce_product_binding_search"/>
             <field name="domain">[('bigcommerce_variant_id', '=', False), ('instance_id.company_id', 'in', context.get('allowed_company_ids') or [context.get('company_id')])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No products linked yet.</p>
+                <p>Run <b>Sync Products</b> on a connector. Products are matched by BigCommerce id first, then by SKU (Internal Reference); products with options get Odoo attributes and variants.</p>
+            </field>
         </record>
 
         <record id="action_bigcommerce_inventory_binding" model="ir.actions.act_window">
@@ -115,6 +119,10 @@
             <field name="view_id" ref="view_bigcommerce_inventory_binding_list"/>
             <field name="search_view_id" ref="view_bigcommerce_product_binding_search"/>
             <field name="domain">[('bigcommerce_variant_id', '=', False), ('instance_id.company_id', 'in', context.get('allowed_company_ids') or [context.get('company_id')])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No stock to compare yet.</p>
+                <p>Inventory rows appear once products are linked. The connector's Inventory Master decides the direction: BigCommerce levels are imported, or Odoo quantities are exported.</p>
+            </field>
         </record>
     </data>
 </odoo>

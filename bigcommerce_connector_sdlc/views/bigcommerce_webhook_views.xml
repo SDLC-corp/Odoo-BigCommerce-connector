@@ -9,6 +9,7 @@
                     string="Webhook Events"
                     default_order="received_at desc,id desc"
                     decoration-danger="status == 'failed'"
+                    decoration-muted="status in ('duplicate', 'rejected')"
                     decoration-warning="status == 'pending' or status == 'processing'"
                     decoration-success="status == 'done'"
                 >
@@ -35,6 +36,7 @@
                     <field name="phase"/>
                     <field name="status"/>
                     <field name="retry_count"/>
+                    <field name="next_retry_at" optional="show"/>
                     <field name="processed_at"/>
                     <field name="error_message" optional="hide"/>
                 </list>
@@ -53,6 +55,7 @@
                             type="object"
                             class="oe_highlight"
                             groups="bigcommerce_connector_sdlc.group_bigcommerce_manager"
+                            invisible="status not in ('pending', 'failed')"
                         />
                         <button
                             name="action_retry"
@@ -73,6 +76,9 @@
                                 <field name="destination"/>
                                 <field name="phase"/>
                                 <field name="retry_count"/>
+                                <field name="next_retry_at"/>
+                                <field name="remote_created_at"/>
+                                <field name="dedup_key" groups="base.group_no_one"/>
                             </group>
                             <group>
                                 <field name="webhook_id"/>
@@ -125,6 +131,8 @@
                     />
                     <filter name="filter_status_done" string="Done" domain="[('status', '=', 'done')]"/>
                     <filter name="filter_status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
+                    <filter name="filter_status_rejected" string="Rejected" domain="[('status', '=', 'rejected')]"/>
+                    <filter name="filter_status_duplicate" string="Duplicate" domain="[('status', '=', 'duplicate')]"/>
                     <separator/>
                     <group>
                         <filter name="group_by_instance" string="Instance" context="{'group_by': 'instance_id'}"/>
@@ -222,6 +230,25 @@
             <field name="res_model">bigcommerce.webhook.subscription</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_bigcommerce_webhook_subscription_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No webhook subscriptions yet.</p>
+                <p>A BigCommerce administrator registers them with <b>Register Webhooks</b> on the connector (API Credentials tab). The callback URL must be public HTTPS.</p>
+            </field>
+        </record>
+
+        <record id="action_bigcommerce_webhook_exceptions" model="ir.actions.act_window">
+            <field name="name">Failed Webhook Events</field>
+            <field name="res_model">bigcommerce.webhook.event</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_bigcommerce_webhook_event_search"/>
+            <field name="context">{'search_default_filter_status_failed': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No failed webhook event.</p>
+                <p>
+                    A failed event is retried automatically with an increasing delay, up to the connector's maximum
+                    number of retries. After that it stays here until a manager clicks <b>Retry</b>.
+                </p>
+            </field>
         </record>
     </data>
 </odoo>
