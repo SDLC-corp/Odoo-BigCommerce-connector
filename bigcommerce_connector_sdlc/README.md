@@ -41,7 +41,9 @@ the Gemini key are readable by BigCommerce administrators only.
    access token.
 2. In Odoo (as BigCommerce administrator): *BigCommerce -> Connectors -> New*, enter store hash and
    access token, choose warehouse, price list and inventory master, then **Test Connection**.
-3. Optional: **Generate Default Mappings** (adds the order-status mapping that confirms paid orders).
+3. The default field mappings, including the *Order Status* map that confirms paid orders and
+   cancels cancelled ones, are created with the connector (*Field Mapping* tab). **Generate Default
+   Mappings** there re-adds missing ones; existing and archived mappings are kept.
 4. Webhooks need a public HTTPS `web.base.url` (or a callback URL override): **Generate Secret**,
    then **Register Webhooks**.
 5. Enable the automatic jobs on the *Automation* tab.
@@ -63,6 +65,16 @@ administrators become BigCommerce Administrators, everyone else internal is a re
 Remove the role from users who should not see BigCommerce (Settings -> Users). On a **fresh
 install** no role is granted automatically: only settings administrators get access until you
 assign roles.
+
+## Upgrading to 19.0.2.1.2
+
+Connectors created before 19.0.2.1.2 had no field mappings unless an administrator generated them,
+so imported orders stayed quotations. The migration generates the default mappings for every
+connector that has **no** mapping at all; a connector with any mapping is left as configured.
+
+Imported orders on which BigCommerce charged no tax now carry no Odoo taxes (product, shipping
+and discount lines), so the Odoo total equals the BigCommerce total. When BigCommerce charged tax,
+Odoo's product taxes and fiscal position apply and any difference is flagged "Total differs".
 
 ## Tests
 
