@@ -636,6 +636,16 @@ class BigCommerceConnector(models.Model):
             }
         if not host:
             return _("Webhook callback URL host is missing.")
+        try:
+            port = parsed.port
+        except ValueError:
+            return _("Webhook callback URL has an invalid port.")
+        if port not in (None, 443):
+            return _(
+                "Webhook callback URL must use the standard HTTPS port 443 (current: %(port)s). "
+                "BigCommerce only delivers webhooks to port 443; remove the port from the URL "
+                "or put a reverse proxy on 443 in front of Odoo."
+            ) % {"port": port}
         if host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith(".local"):
             return _("Webhook callback URL must be publicly reachable. Localhost/.local addresses are not allowed.")
 

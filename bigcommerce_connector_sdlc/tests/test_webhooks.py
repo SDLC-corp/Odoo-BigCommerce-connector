@@ -3,6 +3,7 @@ import json
 from datetime import timedelta
 
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests.common import tagged
 
 from ..services.webhook_service import BigCommerceWebhookService
@@ -175,3 +176,30 @@ class TestWebhookProcessing(BigCommerceCommon):
                          "https://odoo.example.test/bigcommerce/webhook?store_hash=%s" % STORE_A)
         subs = self.env["bigcommerce.webhook.subscription"].search([("instance_id", "=", self.instance.id)])
         self.assertEqual(len(subs), len(scopes))
+
+    def mock_hooks(self, first_id=1):
+        ids = iter(range(first_id, first_id + 1000))
+        self.http.add("GET", STORE_PATH + "/v3/hooks", {"data": [], "meta": {"pagination": {
+            "total": 0, "total_pages": 1, "current_page": 1}}})
+        self.http.add("POST", STORE_PATH + "/v3/hooks", callback=lambda rec: FakeResponse(
+            {"data": dict(rec["json"], id=next(ids), is_active=True)}))
+
+    def test_registration_refuses_a_destination_port_other_than_443(self):
+        """Regression: BigCommerce only delivers webhooks to port 443, yet https://host:8069 was accepted."""
+        self.mock_hooks()
+        self.instance.webhook_callback_url = "https://example.com:8069/bigcommerce/webhook?store_hash=%s" % STORE_A
+        with self.assertRaisesRegex(UserError, "port 443"):
+            self.instance.with_user(self.user_admin).action_register_webhooks()
+        self.assertFalse(self.http.calls_to("POST", STORE_PATH + "/v3/hooks"))
+
+    def test_registration_accepts_default_or_explicit_443_port(self):
+        urls = ("https://example.com/bigcommerce/webhook", "https://example.com:443/bigcommerce/webhook")
+        for index, url in enumerate(urls):
+            with self.subTest(url=url):
+                self.http.reset()
+                self.mock_hooks(first_id=1000 * (index + 1))
+                self.instance.webhook_callback_url = url
+                self.instance.with_user(self.user_admin).action_register_webhooks()
+                posts = self.http.calls_to("POST", STORE_PATH + "/v3/hooks")
+                self.assertTrue(posts)
+                self.assertEqual(posts[0]["json"]["destination"], url)

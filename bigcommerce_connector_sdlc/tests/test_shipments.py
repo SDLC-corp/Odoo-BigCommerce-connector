@@ -3,7 +3,7 @@ from odoo.tests.common import tagged
 
 from ..services.order_sync_service import BigCommerceOrderSyncService
 from ..services.shipment_sync_service import BigCommerceShipmentSyncService
-from .common import STORE_PATH, BigCommerceCommon
+from .common import STORE_PATH, BigCommerceCommon, v2_pages
 
 
 @tagged("post_install", "-at_install", "bigcommerce")
@@ -39,9 +39,10 @@ class TestShipmentExport(BigCommerceCommon):
         return picking
 
     def mock_store(self, remaining_shipped=0, existing=None):
-        self.http.add("GET", STORE_PATH + "/v2/orders/101/shipments", existing)
+        self.http.add("GET", STORE_PATH + "/v2/orders/101/shipments", callback=v2_pages(existing))
         self.http.add("GET", STORE_PATH + "/v2/orders/101/shipping_addresses", [{"id": 9, "order_id": 101}])
-        self.http.add("GET", STORE_PATH + "/v2/orders/101/products", [self.order_line(qty=3, shipped=remaining_shipped)])
+        self.http.add("GET", STORE_PATH + "/v2/orders/101/products",
+                      callback=v2_pages([self.order_line(qty=3, shipped=remaining_shipped)]))
         self.http.add("POST", STORE_PATH + "/v2/orders/101/shipments", {"id": 3001}, status=201)
 
     def service(self):
@@ -88,6 +89,34 @@ class TestShipmentExport(BigCommerceCommon):
     def test_existing_remote_shipment_is_linked_not_duplicated(self):
         self.deliver(self.picking, 3)
         self.mock_store(existing=[{"id": 2999, "tracking_number": "TRK-1"}])
+        self.service().export_shipments()
+        self.assertFalse(self.http.calls_to("POST", STORE_PATH + "/v2/orders/101/shipments"))
+        self.assertEqual(self.picking.bigcommerce_shipment_id, "2999")
+
+    def test_order_lines_beyond_the_first_page_are_matched(self):
+        """Regression: /v2/orders/{id}/products was read without paging (50 per page), so a delivered
+        line on a later page was never matched and the shipment could not be exported."""
+        self.deliver(self.picking, 3)
+        self.mock_store()
+        others = [self.order_line(line_id=1000 + i, product_id=9000 + i, variant_id=9500 + i, sku="OTHER-%s" % i)
+                  for i in range(59)]
+        lines = others[:55] + [self.order_line(line_id=555, qty=3)] + others[55:]
+        self.http.add("GET", STORE_PATH + "/v2/orders/101/products", callback=v2_pages(lines, max_page_size=50))
+        result = self.service().export_shipments()
+        self.assertEqual(result["exported"], 1, result)
+        payload = self.http.calls_to("POST", STORE_PATH + "/v2/orders/101/shipments")[0]["json"]
+        self.assertEqual(payload["items"], [{"order_product_id": 555, "quantity": 3}])
+        pages = [c["params"]["page"] for c in self.http.calls_to("GET", STORE_PATH + "/v2/orders/101/products")]
+        self.assertEqual(pages, [1, 2, 3])
+
+    def test_existing_shipment_on_a_later_page_is_linked_not_duplicated(self):
+        """Regression: /v2/orders/{id}/shipments was read without paging, so a shipment past the first
+        50 was not found and a duplicate was created."""
+        self.deliver(self.picking, 3)
+        self.mock_store()
+        shipments = [{"id": 2000 + i, "tracking_number": "OLD-%s" % i} for i in range(50)]
+        shipments.append({"id": 2999, "tracking_number": "TRK-1"})
+        self.http.add("GET", STORE_PATH + "/v2/orders/101/shipments", callback=v2_pages(shipments, max_page_size=50))
         self.service().export_shipments()
         self.assertFalse(self.http.calls_to("POST", STORE_PATH + "/v2/orders/101/shipments"))
         self.assertEqual(self.picking.bigcommerce_shipment_id, "2999")

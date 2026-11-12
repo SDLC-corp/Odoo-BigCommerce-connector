@@ -376,6 +376,10 @@ class BigCommerceCategorySyncService:
                 payload["parent_id"] = int(parent_binding.bigcommerce_category_id)
             else:
                 payload["parent_id"] = 0
+        elif payload.get("parent_id") in (None, False, ""):
+            # POST /v3/catalog/categories requires parent_id; 0 means top level. Without it a
+            # root category (e.g. Odoo's "All") is refused with HTTP 422.
+            payload["parent_id"] = 0
         return payload
 
     def _extract_created_id(self, response_body):
