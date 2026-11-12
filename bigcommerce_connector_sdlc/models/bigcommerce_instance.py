@@ -347,7 +347,11 @@ class BigCommerceConnector(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         prepared_vals_list = [self._prepare_autofill_vals(vals) for vals in vals_list]
-        return super().create(prepared_vals_list)
+        records = super().create(prepared_vals_list)
+        # Without the default mappings (notably the order status map) imported orders were never
+        # confirmed: no delivery, no shipment export (found in the live test, 19.0.2.1.2).
+        records._generate_default_mappings()
+        return records
 
     def write(self, vals):
         keys = {"api_base_url", "store_hash", "webhook_callback_url"}
@@ -700,157 +704,31 @@ class BigCommerceConnector(models.Model):
             instance.sudo().write({"webhook_secret": secrets.token_hex(32)})
         return self._notification_action(_("Webhook secret generated successfully."), notif_type="success")
 
-    def _get_minimal_default_mapping_rows(self):
-        """Return production-safe starter mappings requested for initial setup."""
-        return [
-            # Product mappings
-            {
-                "name": "Product Name",
-                "mapping_type": "product",
-                "odoo_model": "product.template",
-                "odoo_field_name": "name",
-                "bigcommerce_field_name": "name",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            {
-                "name": "Product SKU",
-                "mapping_type": "product",
-                "odoo_model": "product.template",
-                "odoo_field_name": "default_code",
-                "bigcommerce_field_name": "sku",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            {
-                "name": "Product Price",
-                "mapping_type": "product",
-                "odoo_model": "product.template",
-                "odoo_field_name": "list_price",
-                "bigcommerce_field_name": "price",
-                "direction": "import",
-                "transform_type": "float",
-                "is_required": False,
-            },
-            {
-                "name": "Product Description",
-                "mapping_type": "product",
-                "odoo_model": "product.template",
-                "odoo_field_name": "description_sale",
-                "bigcommerce_field_name": "description",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            # Category mappings
-            {
-                "name": "Category Name",
-                "mapping_type": "category",
-                "odoo_model": "product.category",
-                "odoo_field_name": "name",
-                "bigcommerce_field_name": "name",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            # Customer mappings
-            {
-                "name": "Customer Email",
-                "mapping_type": "customer",
-                "odoo_model": "res.partner",
-                "odoo_field_name": "email",
-                "bigcommerce_field_name": "email",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            {
-                "name": "Customer First Name",
-                "mapping_type": "customer",
-                "odoo_model": "res.partner",
-                "odoo_field_name": "name",
-                "bigcommerce_field_name": "first_name",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            {
-                "name": "Customer Phone",
-                "mapping_type": "customer",
-                "odoo_model": "res.partner",
-                "odoo_field_name": "phone",
-                "bigcommerce_field_name": "phone",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            # Order mappings
-            {
-                "name": "Order Number",
-                "mapping_type": "order",
-                "odoo_model": "sale.order",
-                "odoo_field_name": "client_order_ref",
-                "bigcommerce_field_name": "order_number",
-                "direction": "import",
-                "transform_type": "string",
-                "is_required": False,
-            },
-            {
-                "name": "Order Created Date",
-                "mapping_type": "order",
-                "odoo_model": "sale.order",
-                "odoo_field_name": "date_order",
-                "bigcommerce_field_name": "date_created",
-                "direction": "import",
-                "transform_type": "datetime",
-                "is_required": False,
-            },
-            {
-                "name": "Order Status",
-                "mapping_type": "order",
-                "odoo_model": "sale.order",
-                "odoo_field_name": "state",
-                "bigcommerce_field_name": "status",
-                "direction": "import",
-                "transform_type": "selection",
-                "selection_map_json": "{\"Awaiting Fulfillment\": \"sale\", \"Awaiting Shipment\": \"sale\", \"Awaiting Pickup\": \"sale\", \"Partially Shipped\": \"sale\", \"Shipped\": \"sale\", \"Completed\": \"sale\", \"Partially Refunded\": \"sale\", \"Cancelled\": \"cancel\", \"Declined\": \"cancel\", \"Pending\": \"draft\", \"Awaiting Payment\": \"draft\", \"Incomplete\": \"draft\", \"Manual Verification Required\": \"draft\", \"Refunded\": \"draft\", \"Disputed\": \"draft\"}",
-                "is_required": False,
-            },
-        ]
+    def _generate_default_mappings(self):
+        """Create the missing default field mappings of each connector (idempotent).
+
+        The definitions live in ``bigcommerce.field.mapping._default_mapping_definitions`` (the
+        single source; they include the "Order Status" map that confirms or cancels imported
+        orders). Rules that already exist - active or archived - are kept as they are. No access
+        check, notification or sync log: used by ``create`` and by the admin button.
+
+        Returns ``{connector_id: {"created": n, "skipped": n, "removed": 0}}``.
+        """
+        mapping_model = self.env["bigcommerce.field.mapping"].sudo()
+        return {instance.id: mapping_model.generate_default_mappings(instance) for instance in self.sudo()}
 
     def action_generate_default_mappings(self):
         """Generate initial default mappings for each selected connector without duplicates."""
         self._bc_check_access("admin")
         self = self.sudo()
-        mapping_model = self.env["bigcommerce.field.mapping"].sudo()
         total_created = 0
         total_skipped = 0
         summary_lines = []
 
+        results = self._generate_default_mappings()
         for instance in self:
-            created = 0
-            skipped = 0
-            for row in instance._get_minimal_default_mapping_rows():
-                domain = [
-                    ("connector_id", "=", instance.id),
-                    ("mapping_type", "=", row["mapping_type"]),
-                    ("direction", "=", row["direction"]),
-                    ("odoo_field_name", "=", row["odoo_field_name"]),
-                    ("bigcommerce_field_name", "=", row["bigcommerce_field_name"]),
-                ]
-                existing = mapping_model.search(domain, limit=1)
-                if existing:
-                    skipped += 1
-                    continue
-
-                vals = dict(row)
-                vals["connector_id"] = instance.id
-                vals["bigcommerce_field_path"] = vals["bigcommerce_field_name"]
-                mapping_model.create(vals)
-                created += 1
-
+            created = results[instance.id]["created"]
+            skipped = results[instance.id]["skipped"]
             total_created += created
             total_skipped += skipped
             summary_lines.append("%s: created=%s skipped=%s" % (instance.display_name, created, skipped))

@@ -241,6 +241,13 @@
                             <page string="Field Mapping" groups="bigcommerce_connector_sdlc.group_bigcommerce_admin">
                                 <group>
                                     <button
+                                        name="action_generate_default_mappings"
+                                        string="Generate Default Mappings"
+                                        type="object"
+                                        groups="bigcommerce_connector_sdlc.group_bigcommerce_admin"
+                                        help="Adds the default mappings that are missing (including the order status map that confirms or cancels imported orders). Existing and archived mappings are kept."
+                                    />
+                                    <button
                                         name="action_validate_field_mappings"
                                         string="Validate Field Mappings"
                                         type="object"

@@ -1025,8 +1025,14 @@ class BigCommerceFieldMapping(models.Model):
 
     @api.model
     def generate_default_mappings(self, instance, reset=False):
+        """Create the default rules of ``_default_mapping_definitions`` missing on ``instance``.
+
+        Idempotent: a rule with the same type/direction/Odoo field/BigCommerce field is skipped,
+        archived ones included (recreating it would violate the unique constraint and undo the
+        administrator's choice). ``reset`` first deletes the system (default) rules.
+        """
         connector = self._normalize_connector(instance)
-        model = self.sudo()
+        model = self.sudo().with_context(active_test=False)
         created = skipped = removed = 0
         if reset:
             reset_rules = model.search([("connector_id", "=", connector.id), ("is_system", "=", True)])
@@ -1076,6 +1082,7 @@ class BigCommerceFieldMapping(models.Model):
 
     @api.model
     def _default_mapping_definitions(self):
+        """The default mapping rules, the single source for every connector (``is_system``)."""
         return [
             {"name": "name -> product.template.name", "mapping_type": "product", "direction": "import", "odoo_model": "product.template", "odoo_field_name": "name", "bigcommerce_field_name": "name", "transform_type": "string", "is_system": True},
             {"name": "sku -> product.template.default_code", "mapping_type": "product", "direction": "import", "odoo_model": "product.template", "odoo_field_name": "default_code", "bigcommerce_field_name": "sku", "transform_type": "string", "is_system": True},
