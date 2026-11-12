@@ -1,0 +1,61 @@
+# Release readiness - bigcommerce_connector_sdlc 20.0.2.1.2
+
+The 20.0 branch now carries everything 19.0.2.1.2 has (audit fixes, roles, exception queue,
+live-test fixes), adapted to Odoo 20. Details of the fixes themselves: `AUDIT_19.md` and
+`RELEASE_READINESS_19.md` (the same code, verified on 19.0 and, for 19.0.2.1.2, against a real
+BigCommerce store). The 20.0 build has been tested against mocked BigCommerce responses only.
+
+## Ported
+
+All 16 commits of `origin/20.0..origin/19.0` cherry-picked in order (151942d0 ... cecf0abe):
+roles/credentials/multi-company, webhook/order/shipment/inventory/transport fixes, exception
+queue and role-aware screens (19.0.2.1.0), upgrade role grant, Odoo runtime suite, API contract
+fixes (19.0.2.1.1: root category `parent_id` 0, paged order lines/shipments, webhook port 443),
+default field mappings for every connector (19.0.2.1.2), no Odoo taxes on tax-free orders, docs.
+Conflicts were limited to the files the October [MIG] touched (ACL file, dashboard, manifest).
+
+## 20.0-only commits kept
+
+- [MIG] 110a4e48: kept (ir.access.csv, `get_str`, base64 str images, Owl 3 dashboard). Its
+  dashboard `read_group` rewrites were superseded by the 19.0 `_read_group` code, which already
+  runs on Odoo 20.
+- [FIX] aded87d0 (trends, low stock, product import, customer export, chat): the same fix as
+  19.0's a0df518d; kept in its Owl 3 form (`signal.ref`, `proxy`).
+- [FIX] 241962fe (confirm imported orders from their BigCommerce status): byte-identical to 19.0's
+  38e19473 (same patch id), so no merge was needed. Combined with the 19.0.2.1.2 default mappings,
+  an "Awaiting Fulfillment" order is confirmed through one path only
+  (`_apply_bigcommerce_state`, guarded by draft/sent state). Added assertion in
+  `test_live_fixes.py::test_new_connector_has_default_mappings_and_confirms_awaiting_fulfillment`:
+  a re-sync does not re-confirm, keeps the order date and creates no second delivery.
+
+## Odoo 20 adaptations
+
+- `ir.rule` no longer exists: the 10 multi-company global rules are group-less (restriction)
+  `ir.access` entries with the same xml ids and domains; the 19.0 role ACLs converted to
+  `ir.access` operations.
+- `stock.move.product_uom` -> `uom_id` (shipment item quantities; found by the test run).
+- `ir.config_parameter.set_param` -> `set_str` (tests).
+- Dashboard "Open Exceptions" card: `this.`-prefixed template members, `t-out`; `useService("action")`.
+- Migrations `20.0.2.1.0` (pre/post) and `20.0.2.1.2` (post), same logic as the 19.0 scripts,
+  starting from the published 20.0.2.0.0 build.
+
+## Results
+
+- Fresh database (`-i`, Odoo 20 Community): `0 failed, 0 error(s) of 87 tests` = the module's
+  85 test methods (same as 19.0) + 2 web unit-suite tests run by the test runner. The
+  `SELECT 1/0` error in the log is provoked on purpose by
+  `test_one_bad_product_does_not_abort_the_batch`.
+- Upgrade: published origin/20.0 (241962fe) installed in a fresh DB, seeded with a connector
+  (0 mappings, as the published build creates them), a plain internal user, a rejected
+  ("Invalid webhook secret.") and a done webhook event; `-u` to this code: 0 errors/warnings
+  from the module; logs `4 security records made updatable`, `role given to 1 internal user(s):
+  upg_plain`, `1 rejected webhook events quarantined`, `default field mappings generated for 1
+  connector(s)`. After: 11 mappings, events done/rejected, admin has BigCommerce Administrator,
+  10 restriction entries, no `base.group_user` access left, checkpoint 30 days back.
+- Browser smoke: not run (skipped at the coordinator's request to save time).
+
+## Open items
+
+- Browser check of the Owl 3 dashboard and role-aware screens on Odoo 20.
+- Live verification of the 20.0 build against a real store (19.0 was verified 2026-11-12).
+- Remaining items of `RELEASE_READINESS_19.md` (B1 partial, R1-R7) apply unchanged.

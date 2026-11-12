@@ -1,12 +1,13 @@
-# BigCommerce Connector for Odoo 19 (`bigcommerce_connector_sdlc`)
+# BigCommerce Connector for Odoo 20 (`bigcommerce_connector_sdlc`)
 
-Connects one or more BigCommerce stores to Odoo 19 through BigCommerce's REST API (v2 orders,
+Connects one or more BigCommerce stores to Odoo 20 through BigCommerce's REST API (v2 orders,
 v3 catalog/customers/webhooks).
 
 > **Verification status.** Everything below is covered by the Odoo runtime test-suite against
-> *mocked* BigCommerce responses that follow BigCommerce's published API reference. **No real
-> BigCommerce store has been used.** See `../devtools/RELEASE_READINESS_19.md` before using it in
-> production.
+> *mocked* BigCommerce responses that follow BigCommerce's published API reference. The same code
+> on the 19.0 branch was also run end to end against a real BigCommerce store (2026-11-12, see
+> `../devtools/RELEASE_READINESS_19.md`); **the 20.0 build itself has been tested against mocks
+> only.** See `../devtools/RELEASE_READINESS_20.md` before using it in production.
 
 ## What it does
 
@@ -51,7 +52,7 @@ the Gemini key are readable by BigCommerce administrators only.
    connector (*Pricelist* field). Otherwise orders are imported in the company currency and flagged
    "Currency differs" in the exception queue.
 
-## Upgrading from 19.0.2.0.0
+## Upgrading from 20.0.2.0.0
 
 The migration script:
 
@@ -69,9 +70,9 @@ Remove the role from users who should not see BigCommerce (Settings -> Users). O
 install** no role is granted automatically: only settings administrators get access until you
 assign roles.
 
-## Upgrading to 19.0.2.1.2
+## Upgrading to 20.0.2.1.2
 
-Connectors created before 19.0.2.1.2 had no field mappings unless an administrator generated them,
+Connectors created before 20.0.2.1.2 had no field mappings unless an administrator generated them,
 so imported orders stayed quotations. The migration generates the default mappings for every
 connector that has **no** mapping at all; a connector with any mapping is left as configured.
 

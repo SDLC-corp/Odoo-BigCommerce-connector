@@ -20,7 +20,7 @@ BigCommerce Connector
 * Three roles (read-only user, manager, administrator), credentials visible to administrators only,
   multi-company record rules.
 
-Tested on Odoo 19 Community against mocked BigCommerce API responses only; see the README.
+Tested on Odoo 20 Community against mocked BigCommerce API responses; see the README.
     """,
     "category": "eCommerce",
     "author": "SDLC Corp",
