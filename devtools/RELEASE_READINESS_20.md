@@ -52,10 +52,24 @@ Conflicts were limited to the files the October [MIG] touched (ACL file, dashboa
   upg_plain`, `1 rejected webhook events quarantined`, `default field mappings generated for 1
   connector(s)`. After: 11 mappings, events done/rejected, admin has BigCommerce Administrator,
   10 restriction entries, no `base.group_user` access left, checkpoint 30 days back.
-- Browser smoke: not run (skipped at the coordinator's request to save time).
+- Browser check (2026-11-12, headless Chrome 1440x900, Odoo 20 + demo data, admin): Owl dashboard
+  (KPI cards incl. Open Exceptions, sync health, queue, trend, recent activity, AI button), all 18
+  menu actions (connectors, order/webhook exceptions, 4 field-mapping lists, product/category/
+  customer/order bindings, webhook events/subscriptions, inventory, delivery orders, tracking, sync
+  logs) with the first record form of each, connector form with all 8 tabs and a New form. Test
+  Connection with a fake token and API base http://127.0.0.1:9 gives a clean notification
+  ("Connected: 0, Error: 1"); Sync Webhooks gives "Unable to reach BigCommerce..."; Generate
+  Default Mappings reports created/skipped; Validate Field Mappings and Send Test Event run
+  without error. No console errors, no failed /web or /json requests, no error dialogs.
+  Fixed: the Exceptions stat button used `icon="fa-exclamation-triangle"` (Font Awesome is gone in
+  Odoo 20, the icon rendered blank) -> `icon="warning"`.
+  Not fixed (same on 19.0, cosmetic): mappings created by Generate Default Mappings store only
+  `odoo_field_name`, so the "Odoo Field" column (and the rule's display name) of the Field
+  Mapping tab is empty although the rules work. Restricted-user screens were not re-checked in
+  the browser (dropped by the coordinator to save time; covered by the access tests).
 
 ## Open items
 
-- Browser check of the Owl 3 dashboard and role-aware screens on Odoo 20.
+- Browser check of the role-aware screens as a read-only BigCommerce user on Odoo 20.
 - Live verification of the 20.0 build against a real store (19.0 was verified 2026-11-12).
 - Remaining items of `RELEASE_READINESS_19.md` (B1 partial, R1-R7) apply unchanged.

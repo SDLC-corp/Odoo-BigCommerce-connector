@@ -51,7 +51,7 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_open_exceptions" type="object" class="oe_stat_button"
-                                    icon="fa-exclamation-triangle">
+                                    icon="warning">
                                 <field name="dashboard_exception_count" widget="statinfo" string="Exceptions"/>
                             </button>
                         </div>
