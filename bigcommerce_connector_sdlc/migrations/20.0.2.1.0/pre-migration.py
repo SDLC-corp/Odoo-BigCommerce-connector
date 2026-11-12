@@ -1,4 +1,4 @@
-"""Upgrade from the published 19.0.2.0.0 build (before the module data is reloaded).
+"""Upgrade from the published 20.0.2.0.0 build (before the module data is reloaded).
 
 The published build declared its category, privilege and two groups inside a ``noupdate="1"``
 block, so a plain update would never rename them or attach the new Administrator role above

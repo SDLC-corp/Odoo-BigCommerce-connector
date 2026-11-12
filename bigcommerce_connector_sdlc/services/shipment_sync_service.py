@@ -287,7 +287,7 @@ class BigCommerceShipmentSyncService:
         items = {}
         unmatched = []
         for move in picking.move_ids.filtered(lambda m: m.state == "done" and m.product_id.type != "service"):
-            qty = int(round(move.product_uom._compute_quantity(move.quantity, move.product_id.uom_id)))
+            qty = int(round(move.uom_id._compute_quantity(move.quantity, move.product_id.uom_id)))
             if qty <= 0:
                 continue
             for line in candidates_for(move.product_id):

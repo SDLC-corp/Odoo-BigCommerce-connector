@@ -1,4 +1,4 @@
-"""Upgrade from the published 19.0.2.0.0 build.
+"""Upgrade from the published 20.0.2.0.0 build.
 
 What a plain module update would get wrong for existing databases:
 

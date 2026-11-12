@@ -146,7 +146,7 @@ class BigCommerceFixtures:
         sleeper.start()
         cls.addClassCleanup(sleeper.stop)
 
-        cls.env["ir.config_parameter"].sudo().set_param("web.base.url", "https://odoo.example.test")
+        cls.env["ir.config_parameter"].sudo().set_str("web.base.url", "https://odoo.example.test")
 
         cls.company = cls.env.company
         cls.company_b = cls.env["res.company"].create({"name": "BigCommerce Test Company B"})

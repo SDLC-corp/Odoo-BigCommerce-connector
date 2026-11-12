@@ -1,8 +1,8 @@
-"""Upgrade to 19.0.2.1.2: default field mappings for connectors that have none.
+"""Upgrade to 20.0.2.1.2: default field mappings for connectors that have none.
 
 Found in the live BigCommerce test: the default mappings (among them the "Order Status" map that
 confirms paid orders and cancels cancelled ones) were only created by a method no button called,
-so on a connector created before 19.0.2.1.2 imported orders stayed quotations: no delivery, no
+so on a connector created before 20.0.2.1.2 imported orders stayed quotations: no delivery, no
 shipment export. New connectors now get them on creation.
 
 Only connectors with no ``bigcommerce.field.mapping`` record at all (active or archived) are

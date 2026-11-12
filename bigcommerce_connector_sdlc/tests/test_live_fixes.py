@@ -1,4 +1,4 @@
-"""Defects found in the live BigCommerce test (19.0.2.1.2).
+"""Defects found in the live BigCommerce test (20.0.2.1.2).
 
 A. A new connector had no field mappings (the default ones were only created by a method no button
    called), so the order status was never applied: BigCommerce order #100 "Awaiting Fulfillment"
@@ -18,8 +18,8 @@ DEFAULT_MAPPING_COUNT = 11
 
 
 def _post_migration():
-    path = Path(__file__).resolve().parent.parent / "migrations" / "19.0.2.1.2" / "post-migration.py"
-    spec = importlib.util.spec_from_file_location("bc_post_migration_19_0_2_1_2", path)
+    path = Path(__file__).resolve().parent.parent / "migrations" / "20.0.2.1.2" / "post-migration.py"
+    spec = importlib.util.spec_from_file_location("bc_post_migration_20_0_2_1_2", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -92,7 +92,17 @@ class TestLiveFixes(BigCommerceCommon):
         self.assertEqual(len(self.mappings()), DEFAULT_MAPPING_COUNT)
         sale = self.import_live_order().sale_order_id
         self.assertEqual(sale.state, "sale")
-        self.assertTrue(sale.picking_ids.filtered(lambda p: p.picking_type_code == "outgoing"))
+        deliveries = sale.picking_ids.filtered(lambda p: p.picking_type_code == "outgoing")
+        self.assertTrue(deliveries)
+        # Confirmed exactly once: a re-sync of the same "Awaiting Fulfillment" order (status map
+        # from the default mappings + the October 20.0 status fix) neither re-confirms it nor
+        # creates a second delivery.
+        date_order = sale.date_order
+        resynced = self.import_live_order().sale_order_id
+        self.assertEqual(resynced, sale)
+        self.assertEqual(sale.state, "sale")
+        self.assertEqual(sale.picking_ids.filtered(lambda p: p.picking_type_code == "outgoing"), deliveries)
+        self.assertEqual(sale.date_order, date_order)
 
     def test_default_mapping_generation_is_idempotent(self):
         before = self.mappings()
@@ -112,7 +122,7 @@ class TestLiveFixes(BigCommerceCommon):
         Connector = self.env["bigcommerce.connector"]
         empty = Connector.create({"name": "Old, never mapped", "store_hash": "oldstore1",
                                   "access_token": "TEST-TOKEN-O1", "company_id": self.company.id})
-        self.mappings(empty).unlink()  # as created before 19.0.2.1.2
+        self.mappings(empty).unlink()  # as created before 20.0.2.1.2
         customised = Connector.create({"name": "Old, customised", "store_hash": "oldstore2",
                                        "access_token": "TEST-TOKEN-O2", "company_id": self.company.id})
         self.mappings(customised).filtered(lambda m: m.odoo_field_name == "state").unlink()

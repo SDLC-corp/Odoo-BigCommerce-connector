@@ -42,55 +42,6 @@
         <field name="implied_ids" eval="[(4, ref('bigcommerce_connector_sdlc.group_bigcommerce_admin'))]"/>
     </record>
 
-    <!-- Multi-company isolation (global rules: they also bind administrators). -->
-    <record id="rule_bigcommerce_connector_company" model="ir.rule">
-        <field name="name">BigCommerce connector: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_connector"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_product_binding_company" model="ir.rule">
-        <field name="name">BigCommerce product binding: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_product_binding"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_category_binding_company" model="ir.rule">
-        <field name="name">BigCommerce category binding: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_category_binding"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_customer_binding_company" model="ir.rule">
-        <field name="name">BigCommerce customer binding: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_customer_binding"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_order_binding_company" model="ir.rule">
-        <field name="name">BigCommerce order binding: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_order_binding"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_sync_log_company" model="ir.rule">
-        <field name="name">BigCommerce sync log: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_sync_log"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_webhook_event_company" model="ir.rule">
-        <field name="name">BigCommerce webhook event: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_webhook_event"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_webhook_subscription_company" model="ir.rule">
-        <field name="name">BigCommerce webhook subscription: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_webhook_subscription"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_field_mapping_company" model="ir.rule">
-        <field name="name">BigCommerce field mapping: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_field_mapping"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_bigcommerce_field_company" model="ir.rule">
-        <field name="name">BigCommerce field catalog: company isolation</field>
-        <field name="model_id" ref="model_bigcommerce_field"/>
-        <field name="domain_force">[('connector_id.company_id', 'in', company_ids)]</field>
-    </record>
+    <!-- Multi-company isolation: group-less (restriction) entries in security/ir.access.csv,
+         Odoo 20 replacement of the former global ir.rule records; they also bind administrators. -->
 </odoo>

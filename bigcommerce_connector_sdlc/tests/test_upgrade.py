@@ -1,4 +1,4 @@
-"""Upgrade logic of migrations/19.0.2.1.0 (role grant for existing internal users)."""
+"""Upgrade logic of migrations/20.0.2.1.0 (role grant for existing internal users)."""
 import importlib.util
 from pathlib import Path
 
@@ -8,8 +8,8 @@ from .common import GROUP_ADMIN, GROUP_MANAGER, GROUP_USER, BigCommerceCommon
 
 
 def _post_migration():
-    path = Path(__file__).resolve().parent.parent / "migrations" / "19.0.2.1.0" / "post-migration.py"
-    spec = importlib.util.spec_from_file_location("bc_post_migration_19_0_2_1_0", path)
+    path = Path(__file__).resolve().parent.parent / "migrations" / "20.0.2.1.0" / "post-migration.py"
+    spec = importlib.util.spec_from_file_location("bc_post_migration_20_0_2_1_0", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

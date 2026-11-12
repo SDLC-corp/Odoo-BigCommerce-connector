@@ -28,3 +28,13 @@ access_bigcommerce_field_admin,bigcommerce.field.admin,bigcommerce.field,bigcomm
 access_bigcommerce_field_mapping_test_wizard_admin,bigcommerce.field.mapping.test.wizard.admin,bigcommerce.field.mapping.test.wizard,bigcommerce_connector_sdlc.group_bigcommerce_admin,crud,
 access_bigcommerce_mapping_message_wizard_admin,bigcommerce.mapping.message.wizard.admin,bigcommerce.mapping.message.wizard,bigcommerce_connector_sdlc.group_bigcommerce_admin,crud,
 access_bigcommerce_dashboard_user,bigcommerce.dashboard.user,bigcommerce.dashboard,bigcommerce_connector_sdlc.group_bigcommerce_user,r,
+rule_bigcommerce_connector_company,BigCommerce connector: company isolation,bigcommerce.connector,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_product_binding_company,BigCommerce product binding: company isolation,bigcommerce.product.binding,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_category_binding_company,BigCommerce category binding: company isolation,bigcommerce.category.binding,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_customer_binding_company,BigCommerce customer binding: company isolation,bigcommerce.customer.binding,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_order_binding_company,BigCommerce order binding: company isolation,bigcommerce.order.binding,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_sync_log_company,BigCommerce sync log: company isolation,bigcommerce.sync.log,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_webhook_event_company,BigCommerce webhook event: company isolation,bigcommerce.webhook.event,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_webhook_subscription_company,BigCommerce webhook subscription: company isolation,bigcommerce.webhook.subscription,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_field_mapping_company,BigCommerce field mapping: company isolation,bigcommerce.field.mapping,,crud,"[('company_id', 'in', company_ids)]"
+rule_bigcommerce_field_company,BigCommerce field catalog: company isolation,bigcommerce.field,,crud,"[('connector_id.company_id', 'in', company_ids)]"
