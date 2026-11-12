@@ -27,7 +27,9 @@ class TestShipmentExport(BigCommerceCommon):
         self.binding = self.env["bigcommerce.order.binding"].search(
             [("instance_id", "=", self.instance.id), ("bigcommerce_order_id", "=", "101")])
         self.sale = self.binding.sale_order_id
-        self.sale.action_confirm()
+        # The default "Order Status" mapping (created with the connector since 19.0.2.1.2)
+        # confirms an "Awaiting Fulfillment" order on import.
+        self.assertEqual(self.sale.state, "sale")
         self.picking = self.sale.picking_ids
 
     def deliver(self, picking, qty, tracking="TRK-1"):

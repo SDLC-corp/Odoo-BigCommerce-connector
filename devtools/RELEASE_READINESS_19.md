@@ -99,6 +99,20 @@ files, README, listing claims).
 Test fixture: `tests/common.py` gained `v2_pages()`, which serves V2 list routes page by page and
 answers HTTP 204 past the end; `mock_order` and the shipment mocks use it.
 
+### 19.0.2.1.2 - found in the live BigCommerce test
+
+First run against a real BigCommerce trial store: order #100 ("Awaiting Fulfillment", INR,
+104.85 = 34.95 + 2 x 29.95 + 10.00 shipping, `total_tax` 0) was imported as a quotation without
+delivery, with Odoo's default 15% tax added (120.58).
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| L1 | The default field mappings, among them the "Order Status" map that confirms or cancels orders, were only created by `action_generate_default_mappings`, which no view called. On a new connector imported orders were never confirmed: no delivery, so shipment export could never run. Two copies of the defaults existed (connector and mapping model). | `bigcommerce.field.mapping._default_mapping_definitions` / `generate_default_mappings` is the single source (the connector copy is removed); it now also skips archived rules. `bigcommerce.connector.create` generates them through `_generate_default_mappings` (no access check, notification or log), which the admin action reuses. *Generate Default Mappings* button on the *Field Mapping* tab (administrators). `migrations/19.0.2.1.2/post-migration.py` fills only connectors with zero mappings. | `test_live_fixes.py::test_new_connector_has_default_mappings_and_confirms_awaiting_fulfillment`, `::test_default_mapping_generation_is_idempotent`, `::test_migration_fills_only_connectors_without_mappings` |
+| L2 | Imported lines took Odoo's product default taxes although BigCommerce charged none, so the Odoo total exceeded the amount the customer paid. | `services/order_sync_service.py` `_order_charged_no_tax` / `_line_tax_vals`: when `total_tax` is 0 (or, without it, `total_inc_tax` = `total_ex_tax`) product, shipping and discount lines get no taxes. When tax was charged, Odoo taxes and fiscal position apply as before; differences beyond the connector's order total tolerance are flagged "Total differs" (the live case, 104.85 vs 120.58, would have been flagged had the currencies matched; with INR vs the company currency it was flagged "Currency differs" instead). | `test_live_fixes.py::test_order_without_tax_gets_no_odoo_taxes` (also re-applies the 15% tax and asserts "Total differs"), `::test_order_without_tax_detected_from_inc_and_ex_totals`, `::test_order_with_tax_keeps_odoo_taxes` |
+
+`test_shipments.py` no longer confirms the imported order itself: it asserts the import confirmed
+it. Full suite on a fresh database: 0 failed, 0 error(s) of 85 tests.
+
 ## 3. Remaining blocker
 
 | # | Blocker | Action |
