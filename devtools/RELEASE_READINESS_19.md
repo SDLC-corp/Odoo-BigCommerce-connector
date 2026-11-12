@@ -88,6 +88,17 @@ Medium/low: see `AUDIT_19.md` (savepoints, traceable stock moves, per-delivery s
 and pricelist, placeholder SKU, unbounded history, deprecated `read_group`, dead `name_get`, stale
 files, README, listing claims).
 
+### 19.0.2.1.1 - API contract fixes (checked against docs.bigcommerce.com)
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| P1 | Category export omitted `parent_id` for a root category; `POST /v3/catalog/categories` requires it (0 = top level), so root categories got HTTP 422. | `services/category_sync_service.py` `_prepare_export_payload`: always sends `parent_id` (0 for a root; a linked parent is still sent by its remote id). | `test_catalog_inventory.py::test_category_export_sends_parent_id_zero_for_root` |
+| P2 | `GET /v2/orders/{id}/products` (order import and shipment export) and `GET /v2/orders/{id}/shipments` were read once; V2 returns 50 records per page by default, so lines and shipments after the first page were lost. | `order_sync_service._fetch_order_products`, `shipment_sync_service._shipment_items` and `_find_remote_shipment` use the client's `get_paginated` (`limit=250`, until an empty page / HTTP 204). | `test_order_sync.py::test_order_with_more_than_one_page_of_lines_imports_every_line` (60 lines over two pages), `test_shipments.py::test_order_lines_beyond_the_first_page_are_matched`, `test_shipments.py::test_existing_shipment_on_a_later_page_is_linked_not_duplicated` |
+| P3 | Webhook destination check required HTTPS and a public host but accepted any port; BigCommerce only delivers webhooks to port 443. | `models/bigcommerce_instance.py` `_get_webhook_destination_validation_error`: an explicit port other than 443 (or an invalid port) is refused with a clear message; no port or `:443` is accepted. | `test_webhooks.py::test_registration_refuses_a_destination_port_other_than_443`, `test_webhooks.py::test_registration_accepts_default_or_explicit_443_port` |
+
+Test fixture: `tests/common.py` gained `v2_pages()`, which serves V2 list routes page by page and
+answers HTTP 204 past the end; `mock_order` and the shipment mocks use it.
+
 ## 3. Remaining blocker
 
 | # | Blocker | Action |
