@@ -117,7 +117,7 @@ it. Full suite on a fresh database: 0 failed, 0 error(s) of 85 tests.
 
 | # | Blocker | Action |
 |---|---|---|
-| B1 | **No real BigCommerce call has ever been made.** | Run against a BigCommerce sandbox store: connection test, order import with `min_date_modified` + `sort`, product import of a product with options, customer import/export (v3 list payloads), inventory export, one real shipment (address + items), webhook registration and a real callback (body shape, custom headers, re-delivery). Fix whatever the real API contradicts. |
+| B1 | ~~**No real BigCommerce call has ever been made.**~~ **Closed 2026-11-12** for connection, catalog/customer/order import and shipment export (see "Live end-to-end verification"); still open: inventory export, product with options, customer export and webhooks (need a public HTTPS URL). | Run against a BigCommerce sandbox store: connection test, order import with `min_date_modified` + `sort`, product import of a product with options, customer import/export (v3 list payloads), inventory export, one real shipment (address + items), webhook registration and a real callback (body shape, custom headers, re-delivery). Fix whatever the real API contradicts. |
 
 ## 4. Residual risks
 
@@ -142,7 +142,7 @@ it. Full suite on a fresh database: 0 failed, 0 error(s) of 85 tests.
   offer on the store page are business claims this review cannot verify; they were left unchanged.
 - ~~Auto-assign the read-only role on upgrade~~ - decided by the owner: yes on upgrade from the
   published build, no on fresh installs. Implemented in `migrations/19.0.2.1.0/post-migration.py`.
-- Whether to publish 19.0 before B1 is closed.
+- ~~Whether to publish 19.0 before B1 is closed.~~ B1 closed for the core order flow on 2026-11-12.
 
 ## Live end-to-end verification (2026-11-12, real BigCommerce trial store, INR)
 
