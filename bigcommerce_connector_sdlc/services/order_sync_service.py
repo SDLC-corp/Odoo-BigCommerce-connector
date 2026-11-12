@@ -4,7 +4,8 @@ import logging
 from datetime import timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-from odoo import fields
+from odoo import Command, fields
+from odoo.tools import float_is_zero
 
 from .api_client import BigCommerceApiClient
 
@@ -653,8 +654,45 @@ class BigCommerceOrderSyncService:
             limit=1,
         )
 
-    def _prepare_sale_order_line_vals(self, bc_line, product, sale_order):
-        """Prepare safe sale.order.line values from a BigCommerce order line."""
+    def _order_charged_no_tax(self, bc_order):
+        """True when BigCommerce charged no tax on the order.
+
+        ``total_tax`` decides when present; otherwise the order is tax free when
+        ``total_inc_tax`` equals ``total_ex_tax``. Unknown (neither available) counts as taxed.
+        """
+        if not isinstance(bc_order, dict):
+            return False
+        total_tax = self._safe_float(bc_order.get("total_tax"), default=None)
+        if total_tax is not None:
+            return float_is_zero(total_tax, precision_digits=4)
+        total_inc = self._safe_float(bc_order.get("total_inc_tax"), default=None)
+        total_ex = self._safe_float(bc_order.get("total_ex_tax"), default=None)
+        if total_inc is None or total_ex is None:
+            return False
+        return float_is_zero(total_inc - total_ex, precision_digits=4)
+
+    def _line_tax_vals(self, bc_order):
+        """Tax values for every imported line (product, shipping, discount).
+
+        BigCommerce is the source of truth for what the customer was charged:
+
+        * no tax charged (see ``_order_charged_no_tax``): the lines get no taxes, so Odoo does
+          not add its product default taxes (e.g. 15%) and the Odoo total equals the BigCommerce
+          total (found in the live test: order #100, 104.85 became 120.58);
+        * tax charged: Odoo's product taxes and the order fiscal position apply as before. Odoo
+          cannot reproduce BigCommerce's tax engine line by line, so any difference is reported
+          by the "Total differs" exception flag of the order binding (beyond the connector's
+          order total tolerance) for review.
+        """
+        if self._order_charged_no_tax(bc_order):
+            return {"tax_ids": [Command.clear()]}
+        return {}
+
+    def _prepare_sale_order_line_vals(self, bc_line, product, sale_order, bc_order=None):
+        """Prepare safe sale.order.line values from a BigCommerce order line.
+
+        ``bc_order`` (the order payload) decides the line taxes, see ``_line_tax_vals``.
+        """
         quantity = self._safe_float(
             bc_line.get("quantity"),
             default=0.0,
@@ -683,6 +721,7 @@ class BigCommerceOrderSyncService:
             "price_unit": price_unit,
             "product_uom_id": product.uom_id.id,
         }
+        vals.update(self._line_tax_vals(bc_order))
         mapping_result = self.mapping_model._prepare_odoo_vals_from_mapping(
             payload=bc_line,
             mapping_type="order_line",
@@ -757,7 +796,7 @@ class BigCommerceOrderSyncService:
                             (bc_line.get("sku") or "N/A"),
                         )
                     )
-            line_vals = self._prepare_sale_order_line_vals(bc_line, product, sale_order)
+            line_vals = self._prepare_sale_order_line_vals(bc_line, product, sale_order, bc_order=bc_order)
             self.env["sale.order.line"].create(line_vals)
 
         self._add_shipping_line(sale_order, bc_order)
@@ -970,6 +1009,7 @@ class BigCommerceOrderSyncService:
                 "product_uom_qty": 1.0,
                 "price_unit": shipping_amount,
                 "product_uom_id": shipping_product.uom_id.id,
+                **self._line_tax_vals(bc_order),
             }
         )
 
@@ -994,6 +1034,7 @@ class BigCommerceOrderSyncService:
                 "product_uom_qty": 1.0,
                 "price_unit": -abs(discount_amount),
                 "product_uom_id": discount_product.uom_id.id,
+                **self._line_tax_vals(bc_order),
             }
         )
 
