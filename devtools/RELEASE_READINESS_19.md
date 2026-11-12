@@ -143,3 +143,21 @@ it. Full suite on a fresh database: 0 failed, 0 error(s) of 85 tests.
 - ~~Auto-assign the read-only role on upgrade~~ - decided by the owner: yes on upgrade from the
   published build, no on fresh installs. Implemented in `migrations/19.0.2.1.0/post-migration.py`.
 - Whether to publish 19.0 before B1 is closed.
+
+## Live end-to-end verification (2026-11-12, real BigCommerce trial store, INR)
+
+Run against a real store-level API account (Orders/Products/Customers modify, Information read-only)
+on 19.0.2.1.2 after a real `-u` upgrade from 19.0.2.1.1:
+
+| Step | Result |
+|---|---|
+| Test Connection (`GET /v2/store`) | 200, connected |
+| Sync Categories / Products | 6 categories, 13 products (with variants) created |
+| Sync Customers | 1 customer created (Demo Buyer) |
+| Sync Orders | order #100 -> confirmed sale order in INR, 3 lines (2 products + shipping), no tax, total 104.85 = BigCommerce total, delivery created, no exception flag |
+| Validate delivery (tracking DEMO-TRACK-100) + Export Shipments | `POST /v2/orders/100/shipments` 201; BigCommerce shows the order **Shipped**, Shipment #1, 3 items, tracking DEMO-TRACK-100 |
+
+Not verifiable from a local machine: webhooks (BigCommerce needs a public HTTPS callback on port 443).
+Store currency must exist in Odoo: with INR inactive the order was imported in the company currency
+and correctly flagged "Currency differs"; activating INR and setting an INR pricelist on the
+connector fixed it (configuration, not code).
