@@ -3,7 +3,7 @@ from odoo import fields
 from odoo.tests.common import tagged
 
 from ..services.order_sync_service import BigCommerceOrderSyncService
-from .common import STORE_PATH, BigCommerceCommon
+from .common import STORE_PATH, BigCommerceCommon, v2_pages
 
 
 @tagged("post_install", "-at_install", "bigcommerce")
@@ -62,6 +62,21 @@ class TestOrderSync(BigCommerceCommon):
         self.assertEqual(len(binding.sale_order_id.order_line.filtered(lambda l: l.product_id == self.product)), 1)
 
     # ---- defects fixed --------------------------------------------------------------
+    def test_order_with_more_than_one_page_of_lines_imports_every_line(self):
+        """Regression: /v2/orders/{id}/products was read once (50 lines per page by default), so lines
+        51+ of a large order were silently dropped."""
+        order = self.order_payload(total="60.0000", shipping="0.0000")
+        lines = [self.order_line(line_id=1000 + i, qty=1, price="1.0000") for i in range(60)]
+        self.mock_order(order, [])
+        self.http.add("GET", STORE_PATH + "/v2/orders/101/products", callback=v2_pages(lines, max_page_size=50))
+        result = self.service().import_order_by_id(101)
+        self.assertTrue(result["success"], result)
+        sale = self.binding().sale_order_id
+        self.assertEqual(len(sale.order_line.filtered(lambda l: l.product_id == self.product)), 60)
+        calls = self.http.calls_to("GET", STORE_PATH + "/v2/orders/101/products")
+        self.assertEqual([c["params"]["page"] for c in calls], [1, 2, 3])
+        self.assertEqual(calls[0]["params"]["limit"], 250)
+
     def test_order_with_shipping_and_unknown_product_imports(self):
         """Regression: service products were created with uom_po_id (gone in Odoo 19) -> every such order failed."""
         order = self.order_payload(discount_amount="1.0000", coupon_discount="2.0000",

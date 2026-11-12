@@ -233,11 +233,12 @@ class BigCommerceShipmentSyncService:
         )
 
     def _find_remote_shipment(self, order_id, tracking):
-        result = self.client.get("/v2/orders/%s/shipments" % order_id)
-        body = result.get("response_body")
-        if not result.get("success") or not isinstance(body, list):
+        # V2 list endpoints page (50 per page by default): read every page so a shipment past
+        # the first page is still recognised and never duplicated.
+        result = self.client.get_paginated("/v2/orders/%s/shipments" % order_id, limit=250)
+        if not result.get("success"):
             return False
-        for shipment in body:
+        for shipment in result.get("items") or []:
             if isinstance(shipment, dict) and (shipment.get("tracking_number") or "").strip() == tracking:
                 return str(shipment.get("id") or "") or False
         return False
@@ -256,10 +257,9 @@ class BigCommerceShipmentSyncService:
         Matching order: product binding (variant id, then product id), then SKU. Quantities are
         capped at what is still unshipped on the BigCommerce line.
         """
-        result = self.client.get("/v2/orders/%s/products" % order_id)
-        lines = result.get("response_body") if result.get("success") else []
-        if not isinstance(lines, list):
-            lines = []
+        # GET /v2/orders/{id}/products returns 50 lines per page by default: read every page.
+        result = self.client.get_paginated("/v2/orders/%s/products" % order_id, limit=250)
+        lines = (result.get("items") or []) if result.get("success") else []
         remaining = {}
         for line in lines:
             if not isinstance(line, dict) or not line.get("id"):

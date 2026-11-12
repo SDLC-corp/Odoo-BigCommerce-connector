@@ -3,10 +3,11 @@ from unittest import mock
 
 from odoo.tests.common import tagged
 
+from ..services.category_sync_service import BigCommerceCategorySyncService
 from ..services.customer_sync_service import BigCommerceCustomerSyncService
 from ..services.inventory_sync_service import BigCommerceInventorySyncService
 from ..services.product_sync_service import BigCommerceProductSyncService
-from .common import STORE_PATH, BigCommerceCommon
+from .common import STORE_PATH, BigCommerceCommon, FakeResponse
 
 
 def product_payload(pid=77, name="T-Shirt", sku="TSHIRT", variants=None, modified="2026-11-04T10:00:00+00:00",
@@ -99,6 +100,28 @@ class TestCatalogInventory(BigCommerceCommon):
         self.assertNotIn(mine, self.product_service()._templates_to_export(500))
 
     # ---- customers ------------------------------------------------------------------
+    def test_category_export_sends_parent_id_zero_for_root(self):
+        """Regression: parent_id was omitted for a root category; POST /v3/catalog/categories requires it
+        (0 = top level), so BigCommerce refused every root category with HTTP 422."""
+        root = self.env["product.category"].create({"name": "BC Export Root"})
+        child = self.env["product.category"].create({"name": "BC Export Child", "parent_id": root.id})
+        service = BigCommerceCategorySyncService(self.instance._bc_service_instance())
+        self.assertEqual(service._prepare_export_payload(root)["parent_id"], 0)
+        # Unbound parent: still top level.
+        self.assertEqual(service._prepare_export_payload(child)["parent_id"], 0)
+
+        ids = iter(range(700, 10000))
+        self.http.add("POST", STORE_PATH + "/v3/catalog/categories",
+                      callback=lambda rec: FakeResponse({"data": dict(rec["json"], id=next(ids))}))
+        result = service.export_categories()
+        self.assertEqual(result["failed"], 0, result)
+        posts = {c["json"]["name"]: c["json"] for c in self.http.calls_to("POST", STORE_PATH + "/v3/catalog/categories")}
+        self.assertEqual(posts[root.name]["parent_id"], 0)
+        root_remote = self.env["bigcommerce.category.binding"].search(
+            [("instance_id", "=", self.instance.id), ("category_id", "=", root.id)]).bigcommerce_category_id
+        # A parent already linked to BigCommerce is still referenced by its remote id.
+        self.assertEqual(posts[child.name]["parent_id"], int(root_remote))
+
     def test_customer_export_only_pushes_customers_of_the_company(self):
         """Regression: every contact with an e-mail (vendors, other companies) was pushed to the store."""
         customer = self.env["res.partner"].create({

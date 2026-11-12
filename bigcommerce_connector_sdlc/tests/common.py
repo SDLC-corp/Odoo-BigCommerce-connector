@@ -104,6 +104,27 @@ class HttpRouter:
         return FakeResponse(route["response"], route["status"], route["headers"])
 
 
+def v2_pages(items, max_page_size=250):
+    """Callback serving a BigCommerce V2 list endpoint page by page (``?page=&limit=``).
+
+    V2 answers a plain JSON list per page (50 lines when no ``limit`` is sent, 250 at most) and
+    HTTP 204 with an empty body once the requested page is past the end. ``max_page_size`` lets a
+    test force several pages with few records.
+    """
+    items = list(items or [])
+
+    def _serve(record):
+        params = record.get("params") or {}
+        limit = min(int(params.get("limit") or 50), max_page_size)
+        page = int(params.get("page") or 1)
+        chunk = items[(page - 1) * limit:page * limit]
+        if not chunk:
+            return FakeResponse(None, 204, {"Content-Type": "text/html"})
+        return FakeResponse(chunk)
+
+    return _serve
+
+
 class BigCommerceFixtures:
     """Mixin: network guard, two companies, one user per role, connectors and payload helpers."""
 
@@ -194,7 +215,10 @@ class BigCommerceFixtures:
 
     def mock_order(self, order, lines, path=STORE_PATH):
         oid = order["id"]
-        self.http.add("GET", "%s/v2/orders/%s/products" % (path, oid), lines)
+        if lines is None:
+            self.http.add("GET", "%s/v2/orders/%s/products" % (path, oid), None)
+        else:
+            self.http.add("GET", "%s/v2/orders/%s/products" % (path, oid), callback=v2_pages(lines))
         self.http.add("GET", "%s/v2/orders/%s" % (path, oid), order)
 
     def make_product(self, sku="BC-SKU-1", name="Test Widget", price=10.0, company=False):

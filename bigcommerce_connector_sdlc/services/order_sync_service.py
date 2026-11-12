@@ -308,10 +308,14 @@ class BigCommerceOrderSyncService:
         }
 
     def _fetch_order_products(self, order_id):
-        """Fetch BigCommerce order product lines for a given order id."""
-        result = self.client.get(
+        """Fetch every BigCommerce order product line for a given order id.
+
+        GET /v2/orders/{id}/products returns 50 lines per page by default, so the lines are read
+        page by page (limit=250) until BigCommerce answers with an empty page or HTTP 204.
+        """
+        result = self.client.get_paginated(
             "/v2/orders/%s/products" % order_id,
-            timeout=25,
+            limit=250,
         )
         if not result.get("success"):
             return {
@@ -323,22 +327,13 @@ class BigCommerceOrderSyncService:
                 "lines": [],
             }
 
-        response_body = result.get("response_body")
-        lines = []
-        if isinstance(response_body, list):
-            lines = response_body
-        elif isinstance(response_body, dict) and isinstance(response_body.get("data"), list):
-            lines = response_body.get("data")
-
-        if not isinstance(lines, list):
-            lines = []
-
+        lines = result.get("items") or []
         return {
             "success": True,
             "message": "Order products fetched successfully.",
             "status_code": result.get("status_code"),
             "url": result.get("url"),
-            "response_body": response_body,
+            "response_body": result.get("response_body"),
             "lines": lines,
         }
 
