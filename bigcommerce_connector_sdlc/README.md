@@ -47,6 +47,9 @@ the Gemini key are readable by BigCommerce administrators only.
 4. Webhooks need a public HTTPS `web.base.url` (or a callback URL override): **Generate Secret**,
    then **Register Webhooks**.
 5. Enable the automatic jobs on the *Automation* tab.
+6. Currency: the store currency must be active in Odoo, with a pricelist in that currency set on the
+   connector (*Pricelist* field). Otherwise orders are imported in the company currency and flagged
+   "Currency differs" in the exception queue.
 
 ## Upgrading from 19.0.2.0.0
 
