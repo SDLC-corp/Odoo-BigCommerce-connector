@@ -113,6 +113,19 @@ delivery, with Odoo's default 15% tax added (120.58).
 `test_shipments.py` no longer confirms the imported order itself: it asserts the import confirmed
 it. Full suite on a fresh database: 0 failed, 0 error(s) of 85 tests.
 
+### 19.0.2.1.3 - found in the browser check of the Field Mapping tab
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| M1 | The default mappings showed a blank *Odoo Field* column and a blank rule name ("Unnamed" in the breadcrumb). Root cause: `generate_default_mappings` creates rules with `odoo_field_name` (Char) only, while every mapping list and form shows the Many2one `odoo_field_id`, which nothing filled from the technical name; and `_rec_name` was `odoo_field_id`, so the record name was empty too. The sync reads `odoo_field_name`, so it kept working. | `models/bigcommerce_field_mapping.py`: `create` resolves `odoo_field_id` from `odoo_model` + `odoo_field_name` when only the name is given; `write` keeps it in line when the technical name changes and refuses to clear it; `_rec_name = "name"` (the rule name, e.g. `status -> sale.order.state`). `ir.model.fields` is readable by "Access Rights" administrators only, so the field definition is now read through sudo in `_compute_field_metadata`, `_onchange_odoo_field_id` and `_get_odoo_field_def` (BigCommerce roles would otherwise get an AccessError on a rule that has an Odoo field). `_repair_blank_display_values` + `migrations/19.0.2.1.3/post-migration.py` fill, with SQL, only empty `odoo_field_id` / `bigcommerce_field_id` / `name` from the rule's own stored names; customised values are untouched; idempotent. | `test_live_fixes.py::test_default_mappings_display_odoo_field_and_rule_name` (asserts the values the tab loads through `web_read`), `::test_migration_fills_blank_values_and_keeps_customised_ones` (also re-imports an "Awaiting Fulfillment" order: confirmed), `::test_technical_name_change_keeps_odoo_field_in_line`, `::test_mapping_created_by_admin_through_the_form`, `::test_bigcommerce_roles_read_rules_with_odoo_field` |
+| M2 | Found during the same check, already in the published build: *Add a line* on the *Field Mapping* tab failed as soon as the mapping type was chosen ("Missing required value for the field 'Connector'"): in the dialog's onchange the connector is a NewId, and the BigCommerce field catalog was created with `connector_id` NULL. | `_ensure_bigcommerce_fields_catalog` and the `read` override use the connector's `_origin` (skip an unsaved connector); `_onchange_connector_or_mapping_type` compares origins. | `test_live_fixes.py::test_admin_adds_mapping_in_connector_form` (replays the web client's `onchange` calls captured in the browser) |
+
+Verified on a database upgraded from 19.0.2.1.2 (connector with the blank defaults, one rule
+pointed at another Odoo field and renamed, one rule renamed): `-u` filled the Odoo field of the 10
+blank rules, left both customised values unchanged, no error in the log; the tab and the rule
+breadcrumbs show the values in the browser; a mapping added through *Add a line* is saved with its
+Odoo field and name. Full suite on a fresh database: 0 failed, 0 error(s) of 91 tests.
+
 ## 3. Remaining blocker
 
 | # | Blocker | Action |

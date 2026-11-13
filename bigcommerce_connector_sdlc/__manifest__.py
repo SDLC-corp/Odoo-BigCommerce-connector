@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    "version": "19.0.2.1.2",
+    "version": "19.0.2.1.3",
     "name": "BigCommerce Connector for Odoo",
     "summary": "Import BigCommerce orders, products and customers into Odoo, sync stock one way, export shipments with tracking, with webhooks and an exception queue.",
     "description": """

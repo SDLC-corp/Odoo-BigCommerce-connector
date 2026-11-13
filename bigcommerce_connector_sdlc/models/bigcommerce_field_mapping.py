@@ -40,7 +40,9 @@ class BigCommerceField(models.Model):
 class BigCommerceFieldMapping(models.Model):
     _name = "bigcommerce.field.mapping"
     _description = "BigCommerce Field Mapping"
-    _rec_name = "odoo_field_id"
+    # The rule name ("status -> sale.order.state"). It used to be ``odoo_field_id``, which the
+    # default rules never set: their name was blank ("Unnamed") and so was their "Odoo Field".
+    _rec_name = "name"
     _order = "connector_id,mapping_type,id"
 
     _MAPPING_MODEL_BY_TYPE = {
@@ -148,10 +150,10 @@ class BigCommerceFieldMapping(models.Model):
 
     def read(self, fields=None, load="_classic_read"):
         for rec in self:
-            if rec.connector_id and rec.mapping_type:
+            if rec.connector_id._origin and rec.mapping_type:
                 field_count = self.env["bigcommerce.field"].search_count(
                     [
-                        ("connector_id", "=", rec.connector_id.id),
+                        ("connector_id", "=", rec.connector_id._origin.id),
                         ("mapping_type", "=", rec.mapping_type),
                         ("active", "=", True),
                     ]
@@ -178,9 +180,12 @@ class BigCommerceFieldMapping(models.Model):
 
     @api.depends("odoo_field_id")
     def _compute_field_metadata(self):
+        # ``ir.model.fields`` is readable by "Access Rights" administrators only; the BigCommerce
+        # roles read the field definition of their own rules through sudo.
         for rec in self:
-            rec.odoo_field_label = rec.odoo_field_id.field_description or False
-            rec.odoo_field_type = rec.odoo_field_id.ttype or False
+            field_def = rec.odoo_field_id.sudo()
+            rec.odoo_field_label = field_def.field_description or False
+            rec.odoo_field_type = field_def.ttype or False
 
     @api.depends("mapping_type", "bigcommerce_field_name")
     def _compute_bigcommerce_selector_fields(self):
@@ -220,7 +225,7 @@ class BigCommerceFieldMapping(models.Model):
     def _onchange_connector_or_mapping_type(self):
         for rec in self:
             if rec.bigcommerce_field_id and (
-                rec.bigcommerce_field_id.connector_id != rec.connector_id
+                rec.bigcommerce_field_id.connector_id._origin != rec.connector_id._origin
                 or rec.bigcommerce_field_id.mapping_type != rec.mapping_type
             ):
                 rec.bigcommerce_field_id = False
@@ -229,9 +234,10 @@ class BigCommerceFieldMapping(models.Model):
     @api.onchange("odoo_field_id")
     def _onchange_odoo_field_id(self):
         for rec in self:
-            if rec.odoo_field_id:
-                rec.odoo_model = rec.odoo_field_id.model
-                rec.odoo_field_name = rec.odoo_field_id.name
+            field_def = rec.odoo_field_id.sudo()
+            if field_def:
+                rec.odoo_model = field_def.model
+                rec.odoo_field_name = field_def.name
 
     @api.onchange("bigcommerce_field_name")
     def _onchange_bigcommerce_field_name(self):
@@ -304,6 +310,12 @@ class BigCommerceFieldMapping(models.Model):
                 if field_def and field_def.exists():
                     vals["odoo_field_name"] = field_def.name
                     vals["odoo_model"] = field_def.model
+            elif vals.get("odoo_model") and vals.get("odoo_field_name"):
+                # Rules created from code (the default ones) only give the technical name; the
+                # "Odoo Field" shown in the lists is ``odoo_field_id``.
+                field_def = self._find_odoo_field(vals["odoo_model"], vals["odoo_field_name"])
+                if field_def:
+                    vals["odoo_field_id"] = field_def.id
             bc_name = vals.get("bigcommerce_field_name")
             bc_path = vals.get("bigcommerce_field_path")
             if bc_name and not bc_path:
@@ -369,7 +381,21 @@ class BigCommerceFieldMapping(models.Model):
             raise ValidationError(_("Please select a BigCommerce Field before saving the mapping."))
         if "odoo_field_name" in vals and not vals.get("odoo_field_name"):
             raise ValidationError(_("Please select an Odoo Field before saving the mapping."))
-        res = super().write(vals)
+        if "odoo_field_id" in vals and not vals.get("odoo_field_id"):
+            raise ValidationError(_("Please select an Odoo Field before saving the mapping."))
+        if not vals.get("odoo_field_id") and ("odoo_field_name" in vals or "odoo_model" in vals):
+            # The technical name changed without the Many2one: keep ``odoo_field_id`` (shown as
+            # "Odoo Field") in line, per target field.
+            groups = {}
+            for rec in self:
+                key = (vals.get("odoo_model", rec.odoo_model), vals.get("odoo_field_name", rec.odoo_field_name))
+                groups.setdefault(key, []).append(rec.id)
+            res = True
+            for (model_name, field_name), ids in groups.items():
+                group_vals = dict(vals, odoo_field_id=self._find_odoo_field(model_name, field_name).id or False)
+                res = super(BigCommerceFieldMapping, self.browse(ids)).write(group_vals) and res
+        else:
+            res = super().write(vals)
         for rec in self:
             if not rec.name and rec.bigcommerce_field_name and rec.odoo_field_name:
                 rec.name = "%s -> %s" % (rec.bigcommerce_field_name, rec.odoo_field_name)
@@ -487,11 +513,14 @@ class BigCommerceFieldMapping(models.Model):
 
     def _ensure_bigcommerce_fields_catalog(self):
         for rec in self:
-            if not rec.connector_id or not rec.mapping_type:
+            # In the "Add a line" dialog of the connector form the onchange sees the connector as
+            # a new record (NewId) whose origin is the saved one; an unsaved connector has none.
+            connector_id = rec.connector_id._origin.id
+            if not connector_id or not rec.mapping_type:
                 continue
             for key in rec._default_bigcommerce_field_keys(rec.mapping_type):
                 rec._get_or_create_catalog_field(
-                    connector_id=rec.connector_id.id,
+                    connector_id=connector_id,
                     mapping_type=rec.mapping_type,
                     field_name=key,
                 )
@@ -518,10 +547,78 @@ class BigCommerceFieldMapping(models.Model):
             }
         )
 
+    @api.model
+    def _find_odoo_field(self, model_name, field_name):
+        """The ``ir.model.fields`` record of ``model_name.field_name`` (empty if unknown)."""
+        if not model_name or not field_name:
+            return self.env["ir.model.fields"]
+        return self.env["ir.model.fields"].sudo().search(
+            [("model", "=", model_name), ("name", "=", field_name)], limit=1
+        )
+
+    @api.model
+    def _repair_blank_display_values(self):
+        """Fill the values the mapping lists display but older builds left empty (idempotent).
+
+        Up to 19.0.2.1.2 the default rules were created with the technical field name only:
+        ``odoo_field_id`` (the "Odoo Field" column) stayed empty and, as it was the record name,
+        the rule showed as "Unnamed". Only empty columns are filled, each from the record's own
+        stored values (``odoo_model``/``odoo_field_name``, ``bigcommerce_field_name``), so a value
+        an administrator chose is never replaced. Plain SQL: no constraint or side effect of
+        ``write`` runs on rules an administrator may have left in any state.
+
+        Returns ``{"odoo_field": n, "bigcommerce_field": n, "name": n}`` (rows filled).
+        """
+        self.env.flush_all()
+        cr = self.env.cr
+        cr.execute(
+            """
+            UPDATE bigcommerce_field_mapping m
+               SET odoo_field_id = f.id
+              FROM ir_model_fields f
+             WHERE m.odoo_field_id IS NULL
+               AND f.model = m.odoo_model
+               AND f.name = m.odoo_field_name
+            """
+        )
+        odoo_field = cr.rowcount
+        cr.execute(
+            """
+            SELECT id, connector_id, mapping_type, bigcommerce_field_name
+              FROM bigcommerce_field_mapping
+             WHERE bigcommerce_field_id IS NULL
+               AND connector_id IS NOT NULL
+               AND mapping_type IS NOT NULL
+               AND COALESCE(bigcommerce_field_name, '') <> ''
+            """
+        )
+        bigcommerce_field = 0
+        for mapping_id, connector_id, mapping_type, field_name in cr.fetchall():
+            catalog = self._get_or_create_catalog_field(connector_id, mapping_type, field_name)
+            self.env.flush_all()
+            cr.execute(
+                "UPDATE bigcommerce_field_mapping SET bigcommerce_field_id = %s WHERE id = %s AND bigcommerce_field_id IS NULL",
+                (catalog.id, mapping_id),
+            )
+            bigcommerce_field += cr.rowcount
+        cr.execute(
+            """
+            UPDATE bigcommerce_field_mapping
+               SET name = bigcommerce_field_name || ' -> ' || odoo_field_name
+             WHERE COALESCE(name, '') = ''
+               AND COALESCE(bigcommerce_field_name, '') <> ''
+               AND COALESCE(odoo_field_name, '') <> ''
+            """
+        )
+        name = cr.rowcount
+        self.env.invalidate_all()
+        return {"odoo_field": odoo_field, "bigcommerce_field": bigcommerce_field, "name": name}
+
     def _get_odoo_field_def(self):
         self.ensure_one()
-        if self.odoo_field_id and self.odoo_field_id.model == self.odoo_model and self.odoo_field_id.name == self.odoo_field_name:
-            return self.odoo_field_id
+        field_def = self.odoo_field_id.sudo()
+        if field_def and field_def.model == self.odoo_model and field_def.name == self.odoo_field_name:
+            return field_def
         return self.env["ir.model.fields"].sudo().search(
             [("model", "=", self.odoo_model), ("name", "=", self.odoo_field_name)],
             limit=1,
