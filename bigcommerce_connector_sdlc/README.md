@@ -80,6 +80,15 @@ Imported orders on which BigCommerce charged no tax now carry no Odoo taxes (pro
 and discount lines), so the Odoo total equals the BigCommerce total. When BigCommerce charged tax,
 Odoo's product taxes and fiscal position apply and any difference is flagged "Total differs".
 
+## Upgrading to 20.0.2.1.3
+
+Up to 20.0.2.1.2 the default field mappings stored only the technical Odoo field name, so the
+*Field Mapping* tab showed an empty *Odoo Field* column and the rules were "Unnamed" (the sync was
+not affected). The migration fills, from each rule's own technical names, only the values that are
+empty: the Odoo field, the BigCommerce field reference and the rule name. A rule an administrator
+pointed at another Odoo field or renamed is left as it is. Rules now show their name
+(e.g. `status -> sale.order.state`).
+
 ## Tests
 
 ```

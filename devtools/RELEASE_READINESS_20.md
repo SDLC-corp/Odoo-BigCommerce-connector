@@ -1,4 +1,4 @@
-# Release readiness - bigcommerce_connector_sdlc 20.0.2.1.2
+# Release readiness - bigcommerce_connector_sdlc 20.0.2.1.3
 
 The 20.0 branch now carries everything 19.0.2.1.2 has (audit fixes, roles, exception queue,
 live-test fixes), adapted to Odoo 20. Details of the fixes themselves: `AUDIT_19.md` and
@@ -63,10 +63,33 @@ Conflicts were limited to the files the October [MIG] touched (ACL file, dashboa
   without error. No console errors, no failed /web or /json requests, no error dialogs.
   Fixed: the Exceptions stat button used `icon="fa-exclamation-triangle"` (Font Awesome is gone in
   Odoo 20, the icon rendered blank) -> `icon="warning"`.
-  Not fixed (same on 19.0, cosmetic): mappings created by Generate Default Mappings store only
+  Fixed in 20.0.2.1.3 (see below): mappings created by Generate Default Mappings stored only
   `odoo_field_name`, so the "Odoo Field" column (and the rule's display name) of the Field
-  Mapping tab is empty although the rules work. Restricted-user screens were not re-checked in
+  Mapping tab was empty although the rules worked. Restricted-user screens were not re-checked in
   the browser (dropped by the coordinator to save time; covered by the access tests).
+
+## 20.0.2.1.3 - Field Mapping tab: blank "Odoo Field" and rule names
+
+Same change as 19.0.2.1.3 (details and root cause: `RELEASE_READINESS_19.md`, rows M1 and M2),
+no Odoo 20 specific code needed (`web_read`, `onchange`, `_origin`, `odoo.tests.Form` unchanged).
+
+- Root cause: the default rules were created with the technical `odoo_field_name` only; the lists
+  and forms show the Many2one `odoo_field_id`, which was never filled from it, and `_rec_name`
+  was `odoo_field_id`, so the rule name was empty ("Unnamed"). The sync reads `odoo_field_name`.
+- Fix: `create`/`write` keep `odoo_field_id` in line with the technical name, `_rec_name =
+  "name"`, field definitions read through sudo (`ir.model.fields` is readable by "Access Rights"
+  administrators only), `migrations/20.0.2.1.3/post-migration.py` fills only empty
+  `odoo_field_id` / `bigcommerce_field_id` / `name` (SQL, idempotent, customised values kept).
+- Also fixed (published build too): *Add a line* on the tab failed on choosing the mapping type
+  (catalog created for the connector's NewId, `connector_id` NULL).
+- Results: fresh database `0 failed, 0 error(s) of 93 tests` (87 + 6 new in `test_live_fixes.py`;
+  one earlier run had a transient `ConnectionResetError` in
+  `test_webhooks.py::test_malformed_unknown_and_oversized_bodies`, the 413 reply closing the socket
+  while the 1 MB body was still being sent, unrelated and passing on re-run). Upgrade from origin
+  20.0.2.1.2 (blank defaults, one rule re-pointed to `ref` and renamed, one renamed): Odoo field
+  filled on 10 rules, customised values unchanged, no errors. Browser: the tab shows every Odoo
+  field, the breadcrumb the rule name; a UI-created connector and a rule added through *Add a
+  line* display correctly.
 
 ## Open items
 
